@@ -19,3 +19,25 @@ Use multi-modality techniques to improve the prediction and search results of HA
     year={2023}
 }
 ```
+### Towards a Comprehensive Benchmark for High-Level Synthesis Targeted to FPGAs
+- github: https://github.com/UCLA-DM/HLSyn
+- paper: https://proceedings.neurips.cc/paper_files/paper/2023/file/8dfc3a2720a4112243a285b98e0d4415-Paper-Datasets_and_Benchmarks.pdf
+```
+@article{chang2023dr,
+    title={Towards a Comprehensive Benchmark for High-Level Synthesis Targeted to FPGAs},
+    author={Yunsheng Bai, Atefeh Sohrabizadeh, Zongyue Qin, Ziniu Hu, Yizhou Sun, and Jason Cong},
+    journal={NeurIPS},
+    year={2023}
+}
+```
+### Cross-Modality Program Representation Learning for Electronic Design Automation with High-Level Synthesis
+- github: https://github.com/ZongyueQin/ProgSG
+- paper: https://arxiv.org/pdf/2406.09606
+```
+@article{osti_10539758,
+    title = {Cross-Modality Program Representation Learning for Electronic Design Automation with High-Level Synthesis},
+    author = {Zongyue Qin, Yunsheng Bai, Atefeh Sohrabizadeh, Zijian Ding, Ziniu Hu, Yizhou Sun, and Jason Cong},
+    booktitle = {ACM/IEEE International Symposium on Machine Learning for CAD (MLCAD ’24)},
+    year={2024}
+}
+```
