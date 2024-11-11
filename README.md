@@ -18,6 +18,34 @@ This project explores advanced techniques for design space exploration (DSE) in 
     year={2023}
 }
 ```
+### Efficient Task Transfer for HLS DSE
+- github: 
+- papaer: https://arxiv.org/pdf/2408.13270
+```
+@misc{ding2024efficienttasktransferhls,
+      title={Efficient Task Transfer for HLS DSE}, 
+      author={Zijian Ding and Atefeh Sohrabizadeh and Weikai Li and Zongyue Qin and Yizhou Sun and Jason Cong},
+      year={2024},
+      eprint={2408.13270},
+      archivePrefix={arXiv},
+      primaryClass={cs.AR},
+      url={https://arxiv.org/abs/2408.13270}, 
+}
+```
+### Searching for spin glass ground states through deep reinforcement learning
+- github:
+- paper: https://arxiv.org/pdf/2109.14411
+```
+@misc{fan2021findingspinglassground,
+      title={Finding spin glass ground states through deep reinforcement learning}, 
+      author={Changjun Fan and Mutian Shen and Zohar Nussinov and Zhong Liu and Yizhou Sun and Yang-Yu Liu},
+      year={2021},
+      eprint={2109.14411},
+      archivePrefix={arXiv},
+      primaryClass={cond-mat.dis-nn},
+      url={https://arxiv.org/abs/2109.14411}, 
+}
+```
 ### Towards a Comprehensive Benchmark for High-Level Synthesis Targeted to FPGAs
 - github: https://github.com/UCLA-DM/HLSyn
 - paper: https://proceedings.neurips.cc/paper_files/paper/2023/file/8dfc3a2720a4112243a285b98e0d4415-Paper-Datasets_and_Benchmarks.pdf
