@@ -3,7 +3,7 @@ from saver import saver
 from utils import MLP, load, get_save_path, argsort, get_root_path, get_src_path, \
      _get_y_with_target, _get_y
 from data import _encode_edge_dict, _encode_edge_torch, _encode_X_torch, create_edge_index, _encode_X_dict
-from model import Net
+from model import Net, PolicyNet, ValueNet
 from parameter import DesignSpace, DesignPoint, DesignParameter, get_default_point, topo_sort_param_ids, compile_design_space, gen_key_from_design_point
 from config_ds import build_config
 from result import Result
@@ -303,8 +303,7 @@ class GNNModel():
                     
 
         return results
-  
-  
+
         
 class Explorer():
     def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, run_dse: bool = True, prune_invalid = False, pragma_dim = None):
@@ -317,7 +316,7 @@ class Explorer():
         self.log = saver
         self.kernel_name = kernel_name
         self.config_path = join(path_kernel, f'{kernel_name}_ds_config.json')
-        self.config = self.load_config()
+        self.config = self.load_config()    # Load the DSE configurations from self.config_path
 
         
         if FLAGS.separate_T:
@@ -368,6 +367,7 @@ class Explorer():
         self.graph = nx.read_gexf(self.graph_path)
 
         ## for ploting one of the objectives (all points)
+        ## default: 'perf', 'util-LUT', 'util-FF', 'util-DSP', 'util-BRAM'
         self.plot_data = {k: [] for k in FLAGS.target}
         
         self.prune_invalid = prune_invalid
@@ -528,6 +528,9 @@ class Explorer():
                 self.key_perf_dict.pop(key_refs_perf)
                 
             attrs = vars(result)
+            ## the vars() function returns the __dict__ attribute of an object, which is a dictionary 
+            ## containing the object's writable attributes and their corresponding values
+
             self.log.info(', '.join("%s: %s" % item for item in attrs.items()))
             
             self.key_perf_dict[point_key] = result.perf
@@ -926,3 +929,99 @@ class ExhaustiveExplorer(Explorer):
             self.explored_point += len(results)
             
         self.log.info(f'Explored {self.explored_point} points')
+
+class MCTSExplorer(Explorer):
+    def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, 
+                 run_dse: bool = True, prune_invalid = FLAGS.prune_class, point: DesignPoint = None, 
+                 pragma_dim = None, max_explored_nodes, max_exploration_time, pretrained_regression, 
+                 pretrained_classification, policy_network_path = None, value_network_path = None):
+        """
+        Parameters:
+        max_explored_nodes: maximum number of action (node) to search during MCTS
+        max_exploration_time: time limitation for MCTS
+        regression_model: pretrained model for reward calculation
+        classification_model: pretrained model for reward calculation
+        policy_network_path: path to load policy network weights
+        value_network_path: path to load value network weights
+        """
+        super(MCTSExplorer, self).__init__(path_kernel, kernel_name, path_graph, first_dse, run_dse, prune_invalid, pragma_dim)
+        
+        self.max_explored_nodes = max_explored_nodes
+        self.max_exploration_time = max_exploration_time
+        self.regression_model = pretrained_regression
+        self.classification_model = pretrained_classification
+        self.policy_network_path = policy_network_path
+        self.value_network_path = value_network_path
+        self.policy_network = PolicyNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device))
+        self.value_network = ValueNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device))
+        if self.policy_network_path:
+            self.policy_network.load_state_dict(torch.load(self.policy_network_path))
+        if self.value_network_path:
+            self.value_network.load_state_dict(torch.load(self.value_network_path))
+        self.log.info('Done init')
+
+    def selection(self, state):
+        """
+        Starting at root node R, recursively select optimal child nodes until a leaf node L is reached
+        """
+        # TODO
+        pass
+
+    def expansion(self):
+        """
+        If L is a not a terminal node (i.e. it does not end the game) then create one or more child nodes and select one C.
+        """
+        # TODO
+        pass
+
+
+    def simulation(self):
+        """
+        Run a simulated playout from C until a result is achieved.
+        Comment: We have to determine a way to terminate the simulation:
+            Idea 1: if there's no further actions possible
+            Idea 2: if applying more pragmas does not improve the design
+        """
+        # TODO
+        pass
+    
+    def backpropogation(self):
+        """
+        Update the current move sequence with the simulation result.
+        """
+        # TODO
+        pass
+    
+    def run_mcts(self):
+        """
+        Run MCTS and retrieve the top k actions
+        Check HARP/src/mcts_sample_code.h, it's from one of my undergrad course projects
+        """
+        # TODO
+        pass
+
+    def compute_reward(self, state):
+        """
+        Compute reward of the given state (design) based on the pretrained classification (validation) and regression (resources usage and latency) models
+        """
+        # TODO
+        pass
+
+    def get_legal_actions(self, state):
+        """
+        Return all legal actions (insert pragma p at loop l with factor f) of the given state (design)
+        """
+        # TODO
+        pass
+
+    def apply_action(self, action, state):
+        """
+        Update the state (design) after applying the given action
+        """
+        # TODO
+        pass
+    
+    def get_top_k_designs(self, k=10):
+        self.log.info(f'Get top {k} designs')
+        # TODO
+        pass

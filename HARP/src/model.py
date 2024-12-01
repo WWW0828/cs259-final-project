@@ -380,6 +380,22 @@ class Net(nn.Module):
 
 
         return out_dict, total_loss, loss_dict, gae_loss
-   
-        
-        
+
+class PolicyNet(Net):
+    def __init__(self, in_channels, edge_dim = 0, init_pragma_dict = None, task = FLAGS.task, num_layers = FLAGS.num_layers, D = FLAGS.D, target = FLAGS.target):
+        super(PolicyNet, self).__init__(in_channels, edge_dim, init_pragma_dict, task, num_layers, D, target)
+        # TODO
+        pass
+    def forward(self):
+        # TODO
+        pass
+
+
+class ValueNet(Net):
+    def __init__(self, in_channels, edge_dim = 0, init_pragma_dict = None, task = FLAGS.task, num_layers = FLAGS.num_layers, D = FLAGS.D, target = FLAGS.target):
+        super(PolicyNet, self).__init__(in_channels, edge_dim, init_pragma_dict, task, num_layers, D, target)
+        # TODO
+        pass
+    def forward(self):
+        # TODO
+        pass
