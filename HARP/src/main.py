@@ -1,6 +1,6 @@
 from config import FLAGS
 from train import train_main, inference
-from dse import ExhaustiveExplorer
+from dse import ExhaustiveExplorer, MCTSExplorer
 from saver import saver
 from utils import get_root_path, load, get_src_path, plot_dist, plot_models_per_graph
 
@@ -16,6 +16,10 @@ from data import get_data_list, MyOwnDataset
 import data
 
 if __name__ == '__main__':
+
+    print(f'Running main.py with the following config...')
+    print(f'Task: {FLAGS.task}, Subtask: {FLAGS.subtask}, Model: {FLAGS.model_path}, Train, Val, Test Ratio: ({1 - FLAGS.val_ratio - FLAGS.test_ratio}, {FLAGS.val_ratio}, {FLAGS.test_ratio})')
+    print(f'All Kernel: {FLAGS.all_kernels}, Target Kernel: {FLAGS.target_kernel}, Explorer: {FLAGS.explorer}')
 
     if not FLAGS.force_regen:
         dataset = MyOwnDataset()
@@ -75,8 +79,12 @@ if __name__ == '__main__':
                         if FLAGS.explorer == 'exhaustive':
                             explorer = ExhaustiveExplorer(path, kernel, path_graph, first_dse = first_dse, run_dse = True, pragma_dim = pragma_dim)
                             if FLAGS.plot_dse: plot_data[graph_type] = explorer.plot_data
+                        elif FLAGS.explorer == 'mcts':
+                            raise NotImplementedError('Coming soon...')
+                            explorer = MCTSExplorer(path, kernel, path_graph, first_dse = first_dse, run_dse = True, pragma_dim = pragma_dim)
+                            if FLAGS.plot_dse: plot_data[graph_type] = explorer.plot_data
                         else:
-                            raise NotImplementedError()
+                            raise NotImplementedError(f'Unavailable explorer detected: {FLAGS.explorer}, should be one of [exhaustive|mcts]')
                         saver.info('*'*65)
                         saver.info(f'')
                         first_dse = False

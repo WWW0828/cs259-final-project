@@ -25,6 +25,14 @@ import numpy as np
 import scipy.sparse as sp
 import sys
 
+DEBUG = 0
+
+def print_debug(message):
+    """
+    if util.DEBUG > 0, then print out debugging message.
+    """
+    if DEBUG > 0:
+        print(message)
 
 def check_nx_version():
     nxvg = '2.2'
