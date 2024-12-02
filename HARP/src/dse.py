@@ -99,8 +99,7 @@ def run_procs(saver, procs, database, kernel, f_db_new):
     except:
         saver.error(f'Failed to finish the processes')
         raise RuntimeError()        
-        
-        
+             
 class GNNModel():
     def __init__(self, saver, first_dse = False, multi_target = True, task = 'regression', num_layers = FLAGS.num_layers, D = FLAGS.D, target = FLAGS.target, model_path = None, model_id = 0, model_name = f'{FLAGS.model_tag}_model_state_dict.pth', encoder_name = 'encoders', pragma_dim = None):
         """
@@ -152,8 +151,6 @@ class GNNModel():
         saver.info(f'loaded {self.model_path}')
         self.encoder = load(self.encoder_path)
 
-          
-    
     def encode_node(self, g, point: DesignPoint): 
         node_dict = _encode_X_dict(g, point=point)
         required_keys = ['X_contextnids', 'X_pragmanids', 'X_pseudonids', 'X_icmpnids', 'X_pragmascopenids', 'X_pragma_per_node']
@@ -167,7 +164,6 @@ class GNNModel():
         return _encode_X_torch(node_dict, enc_ntype, enc_ptype, enc_itype, enc_ftype, enc_btype), \
             {k: node_dict[k] for k in required_keys}
         
-      
     def encode_edge(self, g):
         edge_dict = _encode_edge_dict(g)
         enc_ptype_edge = self.encoder['enc_ptype_edge']
@@ -373,8 +369,7 @@ class Explorer():
         self.prune_invalid = prune_invalid
         if self.prune_invalid:
             self.GNNmodel_valid = GNNModel(self.log, multi_target=False, task='class', num_layers = FLAGS.num_layers, D = FLAGS.D, pragma_dim = pragma_dim) 
-        
-        
+          
     def load_config(self) -> Dict[str, Any]:
         """Load the DSE configurations.
 
@@ -404,7 +399,6 @@ class Explorer():
 
         return config
         
-
     def get_pragmas(self, point: DesignPoint) -> List[int]:
         pragmas = []
         for _, value in sorted(point.items()):
@@ -490,8 +484,6 @@ class Explorer():
         
         return data
     
-    
-
     def update_best(self, result: Result) -> None:
         """Keep tracking the best result found in this explorer.
 
@@ -557,7 +549,6 @@ class Explorer():
                 self.plot_data[target].append(data)
             else: 
                 self.plot_data[target].append(float('nan'))
-
 
     def gen_options(self, point: DesignPoint, pid: str, default = False) -> List[Union[int, str]]:
         """Evaluate available options of the target design parameter.
@@ -804,7 +795,6 @@ class Explorer():
         pickle_obj = database.hget(0, f'lv2:{gen_key_from_design_point(point)}')
         return pickle.loads(pickle_obj)
     
-    
     def topo_sort_param_ids(self, space: DesignSpace) -> List[str]:
         return topo_sort_param_ids(space)
     
@@ -874,9 +864,6 @@ class ExhaustiveExplorer(Explorer):
             attrs = vars(results[0])
             self.log.info(', '.join("%s: %s" % item for item in attrs.items()))
                 
-        
-                
-
     def gen(self) -> Generator[List[DesignPoint], Optional[Dict[str, Result]], None]:
         #pylint:disable=missing-docstring
 
@@ -899,8 +886,7 @@ class ExhaustiveExplorer(Explorer):
                 break
 
         self.log.info('No more points to be explored, stop.')
-    
-        
+       
     def run(self) -> None:
         #pylint:disable=missing-docstring
 
@@ -1028,7 +1014,6 @@ class MCTSNode():
         for p in path:
             p.win += reward
             p.visit += 1
-
 
     def run_mcts(self, N):
         """
