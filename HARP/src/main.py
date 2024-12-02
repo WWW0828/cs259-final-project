@@ -81,8 +81,6 @@ if __name__ == '__main__':
                             if FLAGS.plot_dse: plot_data[graph_type] = explorer.plot_data
                         elif FLAGS.explorer == 'mcts':
                             raise NotImplementedError('Coming soon...')
-                            explorer = MCTSExplorer(path, kernel, path_graph, first_dse = first_dse, run_dse = True, pragma_dim = pragma_dim)
-                            if FLAGS.plot_dse: plot_data[graph_type] = explorer.plot_data
                         else:
                             raise NotImplementedError(f'Unavailable explorer detected: {FLAGS.explorer}, should be one of [exhaustive|mcts]')
                         saver.info('*'*65)

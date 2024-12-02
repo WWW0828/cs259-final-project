@@ -167,7 +167,7 @@ class GNNModel():
         return _encode_X_torch(node_dict, enc_ntype, enc_ptype, enc_itype, enc_ftype, enc_btype), \
             {k: node_dict[k] for k in required_keys}
         
-        
+      
     def encode_edge(self, g):
         edge_dict = _encode_edge_dict(g)
         enc_ptype_edge = self.encoder['enc_ptype_edge']
@@ -930,97 +930,144 @@ class ExhaustiveExplorer(Explorer):
             
         self.log.info(f'Explored {self.explored_point} points')
 
-class MCTSExplorer(Explorer):
-    def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, 
-                 run_dse: bool = True, prune_invalid = FLAGS.prune_class, point: DesignPoint = None, 
-                 pragma_dim = None, max_explored_nodes, max_exploration_time, pretrained_regression, 
-                 pretrained_classification, policy_network_path = None, value_network_path = None):
-        """
-        Parameters:
-        max_explored_nodes: maximum number of action (node) to search during MCTS
-        max_exploration_time: time limitation for MCTS
-        regression_model: pretrained model for reward calculation
-        classification_model: pretrained model for reward calculation
-        policy_network_path: path to load policy network weights
-        value_network_path: path to load value network weights
-        """
-        super(MCTSExplorer, self).__init__(path_kernel, kernel_name, path_graph, first_dse, run_dse, prune_invalid, pragma_dim)
-        
-        self.max_explored_nodes = max_explored_nodes
-        self.max_exploration_time = max_exploration_time
-        self.regression_model = pretrained_regression
-        self.classification_model = pretrained_classification
-        self.policy_network_path = policy_network_path
-        self.value_network_path = value_network_path
-        self.policy_network = PolicyNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device))
-        self.value_network = ValueNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device))
-        if self.policy_network_path:
-            self.policy_network.load_state_dict(torch.load(self.policy_network_path))
-        if self.value_network_path:
-            self.value_network.load_state_dict(torch.load(self.value_network_path))
-        self.log.info('Done init')
+class MCTSNode():
+    def __init__(self, state = None, win = 0, visit = 0, children = None, parent = None):
+        self.state = state
+        self.win = win
+        self.visit = visit
+        self.children = children
+        self.parent = parent
 
-    def selection(self, state):
+    def ucb_score(self, c=2):
+        exploit = self.win/self.visit
+        explore = math.sqrt(math.log(self.parent.visit) / self.visit)
+        return exploit + math.sqrt(c) * explore
+    
+    def compute_reward(self):
+        """
+        Compute reward of the given state (design) based on the pretrained classification (validation) and regression (resources usage and latency) models
+        """
+        # TODO
+        return 0
+
+    def get_legal_actions(self):
+        """
+        Return all legal actions of inserting exact 1 pragma p at loop l with factor f) of the given state
+        """
+        # TODO
+        return []
+
+    def apply_action(self, action):
+        """
+        Update the state (design) after applying the given action
+        """
+        # TODO
+        pass
+
+    def is_not_terminated(self):
+        """
+        Need further discussions
+            Idea 1: if there's no further valid actions possible
+            Idea 2: if applying more pragmas does not improve the design
+        """
+        # TODO
+        return False
+    
+    def copy_self_node(self):
+        return MCTSNode(self.state, self.win, self.visit, self.children[:], self.parent)
+    
+    def select(self):
         """
         Starting at root node R, recursively select optimal child nodes until a leaf node L is reached
         """
-        # TODO
-        pass
+        path = [self]
+        cur_node = self
 
-    def expansion(self):
+        while cur_node.is_not_terminated() and cur_node.children:
+            cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
+            path.append(cur_node)
+        
+        return path
+
+    def expand(self):
         """
-        If L is a not a terminal node (i.e. it does not end the game) then create one or more child nodes and select one C.
+        Expand the current node and return the newly expanded child node
+		if the current node has no unexpanded move, it returns itself
         """
-        # TODO
-        pass
+        legal_actions = self.get_legal_actions()
+        new_child = self.copy_self_node()
+        for action in legal_actions:
+            new_child.apply_action(action)
+            is_expanded = False # TODO
+            if not is_expanded:
+                self.children.append(new_child)
+                return new_child
+        
+        return self
 
-
-    def simulation(self):
+    def simulate(self):
         """
         Run a simulated playout from C until a result is achieved.
         Comment: We have to determine a way to terminate the simulation:
             Idea 1: if there's no further actions possible
             Idea 2: if applying more pragmas does not improve the design
         """
-        # TODO
-        pass
+        rollout = self.copy_self_node()
+        legal_actions = self.get_legal_actions()
+
+        while legal_actions:
+            rollout.apply_action(legal_actions[0])
+            legal_actions = rollout.get_legal_actions()
+
+        return rollout.compute_reward()
     
-    def backpropogation(self):
+    def update(self, path, reward):
         """
-        Update the current move sequence with the simulation result.
+		Update statistics for all nodes saved in the path
         """
-        # TODO
-        pass
-    
-    def run_mcts(self):
+        for p in path:
+            p.win += reward
+            p.visit += 1
+
+
+    def run_mcts(self, N):
         """
         Run MCTS and retrieve the top k actions
         Check HARP/src/mcts_sample_code.h, it's from one of my undergrad course projects
         """
         # TODO
-        pass
+        for _ in range(N):
+            path = self.select()
+            leaf = path[-1].expand()
+            if leaf != path[-1]:
+                path.append(leaf)
+            self.update(path, leaf.simulate())
+        
+        return self.take_action()
 
-    def compute_reward(self, state):
+class MCTSExplorer(Explorer):
+    def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, 
+                 run_dse: bool = True, prune_invalid = FLAGS.prune_class, point: DesignPoint = None, 
+                 pragma_dim = None, max_explored_nodes = 75000, policy_network_path = None, value_network_path = None):
         """
-        Compute reward of the given state (design) based on the pretrained classification (validation) and regression (resources usage and latency) models
+        Parameters:
+        max_explored_nodes: maximum number of action (node) to search during MCTS
+        max_exploration_time: time limitation for MCTS
+        policy_network_path: path to load policy network weights
+        value_network_path: path to load value network weights
         """
-        # TODO
-        pass
+        super(MCTSExplorer, self).__init__(path_kernel, kernel_name, path_graph, first_dse, run_dse, prune_invalid, pragma_dim)
+        
+        self.max_explored_nodes = max_explored_nodes
+        self.policy_network_path = policy_network_path
+        self.value_network_path = value_network_path
+        self.policy_network = PolicyNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device))
+        self.value_network = ValueNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device))
+        if self.policy_network_path and self.value_network_path:
+            self.policy_network.load_state_dict(torch.load(self.policy_network_path))
+            self.value_network.load_state_dict(torch.load(self.value_network_path))
+        self.log.info('Done init')
 
-    def get_legal_actions(self, state):
-        """
-        Return all legal actions (insert pragma p at loop l with factor f) of the given state (design)
-        """
-        # TODO
-        pass
-
-    def apply_action(self, action, state):
-        """
-        Update the state (design) after applying the given action
-        """
-        # TODO
-        pass
-    
     def get_top_k_designs(self, k=10):
         self.log.info(f'Get top {k} designs')
         # TODO
