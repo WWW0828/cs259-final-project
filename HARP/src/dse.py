@@ -844,10 +844,9 @@ class ExhaustiveExplorer(Explorer):
         """
         super(ExhaustiveExplorer, self).__init__(path_kernel, kernel_name, path_graph, first_dse, run_dse, prune_invalid, pragma_dim)
         self.batch_size = 1
-        self.log.info('Done ExhaustiveExplorer init')
+        self.log.info('Done init')
         
         if self.run_dse:
-            self.log.info(f'Start running {kernel_name} dse with #nodes < 1000')
             self.run()
             attrs = vars(self.best_result)
             self.log.info('Best Results Found:')
@@ -896,7 +895,7 @@ class ExhaustiveExplorer(Explorer):
 
         timer = time.time()
         duplicated_iters = 0
-        while (time.time() - timer) < self.timeout and self.explored_point < 1000: #75000:
+        while (time.time() - timer) < self.timeout and self.explored_point < 75000:
             try:
                 # Generate the next set of design points
                 next_points = next(gen_next)
@@ -919,7 +918,7 @@ class ExhaustiveExplorer(Explorer):
 
 class MCTSNode():
     def __init__(self, state = None, win = 0, visit = 0, children = None, parent = None):
-        self.state = state # Design Point
+        self.state = state
         self.win = win
         self.visit = visit
         self.children = children
@@ -950,7 +949,7 @@ class MCTSNode():
         Might be similar to Explorer.apply_design_point()
         """
         # TODO
-        pass
+        self.state.append(action)
 
     def is_not_terminated(self):
         """
