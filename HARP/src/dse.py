@@ -299,8 +299,7 @@ class GNNModel():
                     
 
         return results
-
-        
+  
 class Explorer():
     def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, run_dse: bool = True, prune_invalid = False, pragma_dim = None):
         """Constructor.
@@ -946,6 +945,7 @@ class MCTSNode():
     def apply_action(self, action):
         """
         Update the state (design) after applying the given action
+        Might be similar to Explorer.apply_design_point()
         """
         # TODO
         pass
@@ -1046,8 +1046,8 @@ class MCTSExplorer(Explorer):
         self.max_explored_nodes = max_explored_nodes
         self.policy_network_path = policy_network_path
         self.value_network_path = value_network_path
-        self.policy_network = PolicyNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device))
-        self.value_network = ValueNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device))
+        #self.policy_network = PolicyNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device)
+        #self.value_network = ValueNet(in_channels = self.num_features, edge_dim = FLAGS.edge_dim, init_pragma_dict=pragma_dim, task = task, num_layers = num_layers, D = D, target = target).to(FLAGS.device)
         if self.policy_network_path and self.value_network_path:
             self.policy_network.load_state_dict(torch.load(self.policy_network_path))
             self.value_network.load_state_dict(torch.load(self.value_network_path))

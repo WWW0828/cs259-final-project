@@ -17,9 +17,9 @@ import data
 
 if __name__ == '__main__':
 
-    print(f'Running main.py with the following config...')
-    print(f'Task: {FLAGS.task}, Subtask: {FLAGS.subtask}, Model: {FLAGS.model_path}, Train, Val, Test Ratio: ({1 - FLAGS.val_ratio - FLAGS.test_ratio}, {FLAGS.val_ratio}, {FLAGS.test_ratio})')
-    print(f'All Kernel: {FLAGS.all_kernels}, Target Kernel: {FLAGS.target_kernel}, Explorer: {FLAGS.explorer}')
+    # print(f'Running main.py with the following config...')
+    # print(f'Task: {FLAGS.task}, Subtask: {FLAGS.subtask}, Model: {FLAGS.model_path}, Train, Val, Test Ratio: ({1 - FLAGS.val_ratio - FLAGS.test_ratio}, {FLAGS.val_ratio}, {FLAGS.test_ratio})')
+    # print(f'All Kernel: {FLAGS.all_kernels}, Target Kernel: {FLAGS.target_kernel}, Explorer: {FLAGS.explorer}')
 
     if not FLAGS.force_regen:
         dataset = MyOwnDataset()
