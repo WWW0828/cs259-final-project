@@ -512,6 +512,7 @@ class Explorer():
             self.best_result = result
             self.log.info(('Found a better result at {}: Quality {:.1e}, Perf {:.1e}'.format(
                         self.explored_point, result.quality, result.perf)))
+            self.log.info(f'result.point: {result.point}')
             if len(self.key_perf_dict.keys()) >= self.num_top_designs:
                 ## replace maxmimum performance value
                 key_refs_perf = REF(self.key_perf_dict, key=(lambda key: self.key_perf_dict[key]))
@@ -843,9 +844,10 @@ class ExhaustiveExplorer(Explorer):
         """
         super(ExhaustiveExplorer, self).__init__(path_kernel, kernel_name, path_graph, first_dse, run_dse, prune_invalid, pragma_dim)
         self.batch_size = 1
-        self.log.info('Done init')
+        self.log.info('Done ExhaustiveExplorer init')
         
         if self.run_dse:
+            self.log.info(f'Start running {kernel_name} dse with #nodes < 1000')
             self.run()
             attrs = vars(self.best_result)
             self.log.info('Best Results Found:')
@@ -894,7 +896,7 @@ class ExhaustiveExplorer(Explorer):
 
         timer = time.time()
         duplicated_iters = 0
-        while (time.time() - timer) < self.timeout and self.explored_point < 75000:
+        while (time.time() - timer) < self.timeout and self.explored_point < 1000: #75000:
             try:
                 # Generate the next set of design points
                 next_points = next(gen_next)
@@ -917,7 +919,7 @@ class ExhaustiveExplorer(Explorer):
 
 class MCTSNode():
     def __init__(self, state = None, win = 0, visit = 0, children = None, parent = None):
-        self.state = state
+        self.state = state # Design Point
         self.win = win
         self.visit = visit
         self.children = children

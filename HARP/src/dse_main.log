@@ -1,0 +1,232 @@
+['/home/s40/cs259-final-project/HARP/models/v21/regression_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth']
+task                       : regression
+subtask                    : dse
+plot_dse                   : False
+vis_per_kernel             : True
+force_regen                : False
+min_allowed_latency        : 100.0
+epsilon                    : 0.001
+normalizer                 : 10000000.0
+util_normalizer            : 1
+max_number                 : 10000000000.0
+norm_method                : speedup-log2
+new_speedup                : True
+invalid                    : False
+encode_log                 : False
+v_db                       : v21
+test_kernels               : None
+target_kernel              : None
+all_kernels                : True
+dataset                    : harp
+benchmarks                 : ['machsuite',
+                           :  'poly']
+tag                        : whole-machsuite-poly
+graph_type                 : extended-pseudo-block-connected-hierarchy
+encoder_path               : /home/s40/cs259-final-project/HARP/models/encoders/pragma_as_MLP-encoders.klepto
+encode_edge                : True
+encode_edge_position       : True
+num_layers                 : 6
+num_features               : 153
+edge_dim                   : 335
+target                     : ['perf',
+                           :  'util-LUT',
+                           :  'util-FF',
+                           :  'util-DSP',
+                           :  'util-BRAM']
+MLP_common_lyr             : 0
+gnn_type                   : transformer
+dropout                    : 0.1
+jkn_mode                   : max
+jkn_enable                 : True
+node_attention             : True
+node_attention_MLP         : False
+separate_P                 : True
+separate_icmp              : False
+separate_T                 : False
+separate_pseudo            : True
+P_use_all_nodes            : True
+gae_T                      : False
+gae_P                      : False
+gnn_layer_after_MLP        : 1
+pragma_as_MLP              : True
+pragma_as_MLP_list         : ['tile',
+                           :  'pipeline',
+                           :  'parallel']
+pragma_scope               : block
+keep_pragma_attribute      : False
+pragma_order               : parallel_and_merge
+pragma_MLP_hidden_channels : [in_D // 2]
+merge_MLP_hidden_channels  : [in_D // 2]
+model_path                 : ['/home/s40/cs259-final-project/HARP/models/v21/regression_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth']
+ensemble                   : 0
+ensemble_weights           : None
+class_model_path           : /home/s40/cs259-final-project/HARP/models/v21/class_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth
+feature_extract            : False
+fix_gnn_layer              : 1
+FT_extra                   : False
+save_model                 : True
+resample                   : False
+val_ratio                  : 0.15
+activation                 : elu
+D                          : 64
+lr                         : 0.001
+weight_decay               : 0
+scheduler                  : cosine
+warmup                     : linear
+random_seed                : 123
+batch_size                 : 64
+loss                       : MSE
+epoch_num                  : 200
+device                     : cpu
+explorer                   : exhaustive
+model_tag                  : test
+prune_util                 : True
+prune_class                : True
+print_every_iter           : 100
+plot_pred_points           : True
+user                       : s40
+hostname                   : eb0aa3f79c64
+ts                         : 2024-12-02T23-25-41.923107
+Logging to /home/s40/cs259-final-project/HARP/src/logs/dse_results_v21_2024-12-02T23-25-41.923107
+read dataset
+Loaded from /home/s40/cs259-final-project/HARP/models/encoders/v18_pragma_dim.klepto
+[0m] INFO: #################################################################
+[0m] INFO: Now processing extended-pseudo-block-connected-hierarchy graph
+[0m] INFO: *****************************************************************
+[0m] INFO: Starting DSE for aes
+[0m] INFO: Loading configurations
+[0m] INFO: Use default value for search.algorithm.gradient.compute-bound-order: ['PARALLEL', 'PIPELINE']
+[0m] INFO: Use default value for search.algorithm.gradient.memory-bound-order: ['INTERFACE', 'CACHE', 'PIPELINE', 'TILE', 'TILING']
+[0m] INFO: Design space contains 45 valid design points
+[0m] INFO: Finished design space compilation
+/home/s40/cs259-final-project/HARP/models/v21/regression_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth
+Net(
+  (conv_first): TransformerConv(153, 64, heads=1)
+  (conv_layers): ModuleList(
+    (0-5): 6 x TransformerConv(64, 64, heads=1)
+  )
+  (jkn): JumpingKnowledge(max)
+  (loss_function): MSELoss()
+  (gate_nn_P): Sequential(
+    (0): Linear(in_features=64, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=1, bias=True)
+  )
+  (glob_P): MyGlobalAttention(gate_nn=Sequential(
+    (0): Linear(in_features=64, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=1, bias=True)
+  ), nn=None)
+  (gate_nn_pseudo_B): Sequential(
+    (0): Linear(in_features=64, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=1, bias=True)
+  )
+  (glob_pseudo_B): MyGlobalAttention(gate_nn=Sequential(
+    (0): Linear(in_features=64, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=1, bias=True)
+  ), nn=None)
+  (MLPs): MLP_multi_objective(
+    (activation): ELU(alpha=1.0)
+    (layers_common): ModuleList()
+    (MLP_heads): ModuleDict(
+      (perf): ModuleList(
+        (0): Linear(in_features=128, out_features=32, bias=True)
+        (1): Linear(in_features=32, out_features=16, bias=True)
+        (2): Linear(in_features=16, out_features=8, bias=True)
+        (3): Linear(in_features=8, out_features=1, bias=True)
+      )
+      (util-LUT): ModuleList(
+        (0): Linear(in_features=128, out_features=32, bias=True)
+        (1): Linear(in_features=32, out_features=16, bias=True)
+        (2): Linear(in_features=16, out_features=8, bias=True)
+        (3): Linear(in_features=8, out_features=1, bias=True)
+      )
+      (util-FF): ModuleList(
+        (0): Linear(in_features=128, out_features=32, bias=True)
+        (1): Linear(in_features=32, out_features=16, bias=True)
+        (2): Linear(in_features=16, out_features=8, bias=True)
+        (3): Linear(in_features=8, out_features=1, bias=True)
+      )
+      (util-DSP): ModuleList(
+        (0): Linear(in_features=128, out_features=32, bias=True)
+        (1): Linear(in_features=32, out_features=16, bias=True)
+        (2): Linear(in_features=16, out_features=8, bias=True)
+        (3): Linear(in_features=8, out_features=1, bias=True)
+      )
+      (util-BRAM): ModuleList(
+        (0): Linear(in_features=128, out_features=32, bias=True)
+        (1): Linear(in_features=32, out_features=16, bias=True)
+        (2): Linear(in_features=16, out_features=8, bias=True)
+        (3): Linear(in_features=8, out_features=1, bias=True)
+      )
+    )
+  )
+  (MLPs_per_pragma): ModuleDict(
+    (tile): MLP(
+      (activation): ELU(alpha=1.0)
+      (layers): ModuleList(
+        (0): Linear(in_features=65, out_features=32, bias=True)
+        (1): Linear(in_features=32, out_features=64, bias=True)
+      )
+    )
+    (pipeline): MLP(
+      (activation): ELU(alpha=1.0)
+      (layers): ModuleList(
+        (0): Linear(in_features=65, out_features=32, bias=True)
+        (1): Linear(in_features=32, out_features=64, bias=True)
+      )
+    )
+    (parallel): MLP(
+      (activation): ELU(alpha=1.0)
+      (layers): ModuleList(
+        (0): Linear(in_features=66, out_features=33, bias=True)
+        (1): Linear(in_features=33, out_features=64, bias=True)
+      )
+    )
+    (merge): MLP(
+      (activation): ELU(alpha=1.0)
+      (layers): ModuleList(
+        (0): Linear(in_features=192, out_features=96, bias=True)
+        (1): Linear(in_features=96, out_features=64, bias=True)
+      )
+    )
+  )
+)
+
+[0m] INFO: loaded /home/s40/cs259-final-project/HARP/models/v21/regression_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth
+Loaded from /home/s40/cs259-final-project/HARP/models/encoders/pragma_as_MLP-encoders.klepto
+['/home/s40/cs259-final-project/HARP/dse_database/generated_graphs/machsuite/processed/extended-pseudo-block-connected-hierarchy/aes_processed_result.gexf']
+[0m] INFO: graph path /home/s40/cs259-final-project/HARP/dse_database/generated_graphs/machsuite/processed/extended-pseudo-block-connected-hierarchy/aes_processed_result.gexf
+/home/s40/cs259-final-project/HARP/models/v21/class_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth
+[0m] INFO: loaded /home/s40/cs259-final-project/HARP/models/v21/class_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth
+Loaded from /home/s40/cs259-final-project/HARP/models/encoders/pragma_as_MLP-encoders.klepto
+[0m] INFO: Done init
+[0m] INFO: Launch exhaustive search algorithm
+[2m] INFO: No more points to be explored, stop.
+[2m] INFO: Explored 45 points
+[2m] INFO: Best Results Found:
+[2m] INFO: *****************************************************************
+[2m] INFO: 
+[2m] INFO: #################################################################
+[2m] INFO: Now processing extended-pseudo-block-connected-hierarchy graph
+[2m] INFO: *****************************************************************
+[2m] INFO: Starting DSE for gemm-blocked
+[2m] INFO: Loading configurations
+[2m] INFO: Use default value for search.algorithm.gradient.compute-bound-order: ['PARALLEL', 'PIPELINE']
+[2m] INFO: Use default value for search.algorithm.gradient.memory-bound-order: ['INTERFACE', 'CACHE', 'PIPELINE', 'TILE', 'TILING']
+[2m] INFO: Design space contains 2314 valid design points
+[2m] INFO: Finished design space compilation
+/home/s40/cs259-final-project/HARP/models/v21/regression_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth
+[2m] INFO: loaded /home/s40/cs259-final-project/HARP/models/v21/regression_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth
+Loaded from /home/s40/cs259-final-project/HARP/models/encoders/pragma_as_MLP-encoders.klepto
+['/home/s40/cs259-final-project/HARP/dse_database/generated_graphs/machsuite/processed/extended-pseudo-block-connected-hierarchy/gemm-blocked_processed_result.gexf']
+[2m] INFO: graph path /home/s40/cs259-final-project/HARP/dse_database/generated_graphs/machsuite/processed/extended-pseudo-block-connected-hierarchy/gemm-blocked_processed_result.gexf
+/home/s40/cs259-final-project/HARP/models/v21/class_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth
+[2m] INFO: loaded /home/s40/cs259-final-project/HARP/models/v21/class_pragma_as_MLP_2l-m-2l-p_model_state_dict.pth
+Loaded from /home/s40/cs259-final-project/HARP/models/encoders/pragma_as_MLP-encoders.klepto
+[2m] INFO: Done init
+[2m] INFO: Launch exhaustive search algorithm
+[2m] INFO: Found a better result at 0: Quality 1.8e-01, Perf 5.5e+00
+[2m] INFO: point: {'__PARA__L2': tensor([1]), '__PIPE__L0': 'off', '__PIPE__L1': 'off', '__PIPE__L2': 'off', '__PIPE__L3': 'off', '__TILE__L0': tensor([1]), '__TILE__L1': tensor([1]), '__TILE__L2': tensor([1]), '__TILE__L3': tensor([1])}, ret_code: RetCode.PASS, valid: True, path: None, quality: 0.18299176038315715, perf: 5.46472692489624, res_util: {'util-BRAM': 0.03744684159755707, 'util-DSP': 0.08468151092529297, 'util-LUT': 0.05743180960416794, 'util-FF': 0.030022963881492615, 'total-BRAM': 0, 'total-DSP': 0, 'total-LUT': 0, 'total-FF': 0}, eval_time: 0.0, actual_perf: 5.46472692489624
