@@ -944,8 +944,8 @@ class MCTSExplorer(Explorer):
                 self.point: DesignPoint = point # Design Point
                 self.win = win
                 self.visit = visit
-                self.children = children
-                self.parent = parent
+                self.children: List[MCTSNode] = children
+                self.parent: MCTSNode = parent
                 self.legal_actions = self.get_legal_actions()
 
             def ucb_score(self, c=2):
@@ -960,13 +960,14 @@ class MCTSExplorer(Explorer):
                 # TODO
                 return 0
 
-            def get_legal_actions(self) -> List[DesignPoint]:
+            def get_legal_actions(self) -> List[Tuple]:
                 """
                 Generate a list of DesignPoints that contains all the possible pragmas that can be inserted to current DesignPoint, only insert one single pragma at once
                 
                 Returns:
                     All possible ways to insert one pragma to the current design
                 """
+
                 points = []
                 inserted_loops = set()
 
@@ -983,7 +984,7 @@ class MCTSExplorer(Explorer):
                         continue
                     options = eval(param.option_expr, point)
                     for option in options:
-                        action = {param.name: option}
+                        action = tuple(param.name, option)
                         points.append(action)
                         # MCTSExplorer.log.info(f'append {action} into legal actions')
 
@@ -995,10 +996,14 @@ class MCTSExplorer(Explorer):
                 """
                 Update the state (design) after applying the given action
                 Might be similar to Explorer.apply_design_point()
+
+                Args:
+                    action: tuple(pragma, option/factor)
                 """
                 # TODO
-                pragma_name = list(action.keys())[0]
-                self.state[pragma_name] = action[pragma_name]
+                self.state[action[0]] = action[1]
+                self.children = []
+                self.parent = self
 
             def is_not_terminated(self):
                 """
@@ -1030,11 +1035,18 @@ class MCTSExplorer(Explorer):
                 Expand the current node and return the newly expanded child node
 	        	if the current node has no unexpanded move, it returns itself
                 """
-                new_child = self.copy_self_node()
                 for action in self.legal_actions:
-                    new_child.apply_action(action)
-                    is_expanded = False # TODO
+                    # Check if this action has been expanded
+                    # -- check if it exists in children
+                    is_expanded = False
+                    for child in self.children:
+                        if action[0] in child.point.keys():
+                            is_expanded = True
+                            break
+                            
                     if not is_expanded:
+                        new_child = self.copy_self_node()
+                        new_child.apply_action(action)
                         self.children.append(new_child)
                         return new_child
 
