@@ -1006,7 +1006,7 @@ class MCTSExplorer(Explorer):
                     Idea 2: if applying more pragmas does not improve the design
                 """
                 # TODO
-                return False
+                return len(self.children) < len(self.get_legal_actions())
 
             def copy_self_node(self):
                 return MCTSNode(self.state, self.win, self.visit, self.children[:], self.parent)
