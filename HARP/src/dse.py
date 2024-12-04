@@ -1004,6 +1004,7 @@ class MCTSExplorer(Explorer):
                 self.state[action[0]] = action[1]
                 self.children = []
                 self.parent = self
+                self.legal_actions = self.get_legal_actions()
 
             def is_not_terminated(self):
                 """
@@ -1011,7 +1012,7 @@ class MCTSExplorer(Explorer):
                     Idea 1: if there's no further valid actions possible
                     Idea 2: if applying more pragmas does not improve the design
                 """
-                # TODO
+                # TODO: implement idea 2
                 return len(self.children) < self.legal_actions
 
             def copy_self_node(self):
