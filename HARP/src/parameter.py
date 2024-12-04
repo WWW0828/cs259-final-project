@@ -18,6 +18,8 @@ class DesignParameter(object):
         self.deps: List[str] = []
         self.child: List[str] = []
         self.value: Union[str, int] = 1
+    def to_string(self):
+        return f'(name: {self.name}, default: {self.default}, option_expr: {self.option_expr}, scope: {self.scope}, order: {self.order}, deps: {self.deps})'
 
 
 DesignSpace = Dict[str, DesignParameter]
@@ -188,7 +190,6 @@ def get_default_point(ds: DesignSpace) -> DesignPoint:
         point[pid] = param.default
     return point
 
-
 def check_design_space(params: DesignSpace, log) -> int:
     """Check design space for missing dependency and duplication.
 
@@ -306,6 +307,7 @@ def count_design_points(ds: DesignSpace, log) -> int:
         pid = sorted_ids[idx]
         param = ds[pid]
         options = eval(param.option_expr, point)
+        log.info(f'option_expr: {param.option_expr}, point: {point}, options: {options}')
 
         counter = 0
         if param.child:
@@ -339,8 +341,12 @@ def compile_design_space(user_ds_config: Dict[str, Dict[str, Union[str, int]]],
         The design space compiled from the kernel code; or None if failed.
     """
     params: Dict[str, DesignParameter] = {}
+    count = 0
     for param_id, param_config in user_ds_config.items():
         param = create_design_parameter(param_id, param_config, DesignParameter, log)
+        if count < 5:
+            log.info(f'[Compile DS] param_id: {param_id}, param_config: {param_config}, param: {param.to_string()}')
+            count += 1
         if param:               
             if param.ds_type not in [
                     'PARALLEL', 'PIPELINE', 'TILING', 'TILE'

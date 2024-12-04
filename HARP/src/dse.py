@@ -326,7 +326,6 @@ class Explorer():
             self.config['design-space']['definition'],
             None,
             self.log)
-
         self.batch_size = 1
         # Status checking
         self.num_top_designs = 10
@@ -916,121 +915,6 @@ class ExhaustiveExplorer(Explorer):
             
         self.log.info(f'Explored {self.explored_point} points')
 
-class MCTSNode():
-    def __init__(self, state = None, win = 0, visit = 0, children = None, parent = None):
-        self.state = state
-        self.win = win
-        self.visit = visit
-        self.children = children
-        self.parent = parent
-
-    def ucb_score(self, c=2):
-        exploit = self.win/self.visit
-        explore = math.sqrt(math.log(self.parent.visit) / self.visit)
-        return exploit + math.sqrt(c) * explore
-    
-    def compute_reward(self):
-        """
-        Compute reward of the given state (design) based on the pretrained classification (validation) and regression (resources usage and latency) models
-        """
-        # TODO
-        return 0
-
-    def get_legal_actions(self):
-        """
-        Return all legal actions of inserting exact 1 pragma p at loop l with factor f) of the given state
-        """
-        # TODO
-        return []
-
-    def apply_action(self, action):
-        """
-        Update the state (design) after applying the given action
-        Might be similar to Explorer.apply_design_point()
-        """
-        # TODO
-        loop = list(action.keys())[0]
-        self.state[loop] = action[loop]
-
-    def is_not_terminated(self):
-        """
-        Need further discussions
-            Idea 1: if there's no further valid actions possible
-            Idea 2: if applying more pragmas does not improve the design
-        """
-        # TODO
-        return False
-    
-    def copy_self_node(self):
-        return MCTSNode(self.state, self.win, self.visit, self.children[:], self.parent)
-    
-    def select(self):
-        """
-        Starting at root node R, recursively select optimal child nodes until a leaf node L is reached
-        """
-        path = [self]
-        cur_node = self
-
-        while cur_node.is_not_terminated() and cur_node.children:
-            cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
-            path.append(cur_node)
-        
-        return path
-
-    def expand(self):
-        """
-        Expand the current node and return the newly expanded child node
-		if the current node has no unexpanded move, it returns itself
-        """
-        legal_actions = self.get_legal_actions()
-        new_child = self.copy_self_node()
-        for action in legal_actions:
-            new_child.apply_action(action)
-            is_expanded = False # TODO
-            if not is_expanded:
-                self.children.append(new_child)
-                return new_child
-        
-        return self
-
-    def simulate(self):
-        """
-        Run a simulated playout from C until a result is achieved.
-        Comment: We have to determine a way to terminate the simulation:
-            Idea 1: if there's no further actions possible
-            Idea 2: if applying more pragmas does not improve the design
-        """
-        rollout = self.copy_self_node()
-        legal_actions = self.get_legal_actions()
-
-        while legal_actions:
-            rollout.apply_action(legal_actions[0])
-            legal_actions = rollout.get_legal_actions()
-
-        return rollout.compute_reward()
-    
-    def update(self, path, reward):
-        """
-		Update statistics for all nodes saved in the path
-        """
-        for p in path:
-            p.win += reward
-            p.visit += 1
-
-    def run_mcts(self, N):
-        """
-        Run MCTS and retrieve the top k actions
-        Check HARP/src/mcts_sample_code.h, it's from one of my undergrad course projects
-        """
-        # TODO
-        for _ in range(N):
-            path = self.select()
-            leaf = path[-1].expand()
-            if leaf != path[-1]:
-                path.append(leaf)
-            self.update(path, leaf.simulate())
-        
-        return self.take_action()
 
 class MCTSExplorer(Explorer):
     def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, 
@@ -1054,6 +938,146 @@ class MCTSExplorer(Explorer):
             self.policy_network.load_state_dict(torch.load(self.policy_network_path))
             self.value_network.load_state_dict(torch.load(self.value_network_path))
         self.log.info('Done init')
+
+        class MCTSNode():
+            def __init__(self, point = None, win = 0, visit = 0, children = None, parent = None):
+                self.point: DesignPoint = point # Design Point
+                self.win = win
+                self.visit = visit
+                self.children = children
+                self.parent = parent
+
+            def ucb_score(self, c=2):
+                exploit = self.win/self.visit
+                explore = math.sqrt(math.log(self.parent.visit) / self.visit)
+                return exploit + math.sqrt(c) * explore
+
+            def compute_reward(self):
+                """
+                Compute reward of the given state (design) based on the pretrained classification (validation) and regression (resources usage and latency) models
+                """
+                # TODO
+                return 0
+
+            def get_legal_actions(self) -> List[DesignPoint]:
+                """
+                Generate a list of DesignPoints that contains all the possible pragmas that can be inserted to current DesignPoint, only insert one single pragma at once
+                
+                Returns:
+                    All possible ways to insert one pragma to the current design
+                """
+                points = []
+                inserted_loops = set()
+
+                for name in self.point.keys():
+                    inserted_loops.add(name[8:])
+
+                sorted_ids = topo_sort_param_ids(MCTSExplorer.ds)
+                for sid in range(len(sorted_ids)):
+                    pid = sorted_ids[sid]
+                    param = MCTSExplorer.ds[pid]
+                    # MCTSExplorer.log.info('[Get Legal Actions]' + param.to_string())
+                    # MCTSExplorer.log.info(f'check param loop level: {param.name[8:]}, inserted loops: {inserted_loops}')
+                    if param.name[8:] in inserted_loops:
+                        continue
+                    options = eval(param.option_expr, point)
+                    for option in options:
+                        action = {param.name: option}
+                        points.append(action)
+                        # MCTSExplorer.log.info(f'append {action} into legal actions')
+
+                # MCTSExplorer.log.info(f'#legal actions: {len(points)}')
+                return points
+
+            
+            def apply_action(self, action):
+                """
+                Update the state (design) after applying the given action
+                Might be similar to Explorer.apply_design_point()
+                """
+                # TODO
+                loop = list(action.keys())[0]
+                self.state[loop] = action[loop]
+
+            def is_not_terminated(self):
+                """
+                Need further discussions
+                    Idea 1: if there's no further valid actions possible
+                    Idea 2: if applying more pragmas does not improve the design
+                """
+                # TODO
+                return False
+
+            def copy_self_node(self):
+                return MCTSNode(self.state, self.win, self.visit, self.children[:], self.parent)
+
+            def select(self):
+                """
+                Starting at root node R, recursively select optimal child nodes until a leaf node L is reached
+                """
+                path = [self]
+                cur_node = self
+
+                while cur_node.is_not_terminated() and cur_node.children:
+                    cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
+                    path.append(cur_node)
+
+                return path
+
+            def expand(self):
+                """
+                Expand the current node and return the newly expanded child node
+	        	if the current node has no unexpanded move, it returns itself
+                """
+                legal_actions = self.get_legal_actions()
+                new_child = self.copy_self_node()
+                for action in legal_actions:
+                    new_child.apply_action(action)
+                    is_expanded = False # TODO
+                    if not is_expanded:
+                        self.children.append(new_child)
+                        return new_child
+
+                return self
+
+            def simulate(self):
+                """
+                Run a simulated playout from C until a result is achieved.
+                Comment: We have to determine a way to terminate the simulation:
+                    Idea 1: if there's no further actions possible
+                    Idea 2: if applying more pragmas does not improve the design
+                """
+                rollout = self.copy_self_node()
+                legal_actions = self.get_legal_actions()
+
+                while legal_actions:
+                    rollout.apply_action(legal_actions[0])
+                    legal_actions = rollout.get_legal_actions()
+
+                return rollout.compute_reward()
+
+            def update(self, path, reward):
+                """
+	        	Update statistics for all nodes saved in the path
+                """
+                for p in path:
+                    p.win += reward
+                    p.visit += 1
+
+            def run_mcts(self, N):
+                """
+                Run MCTS and retrieve the top k actions
+                Check HARP/src/mcts_sample_code.h, it's from one of my undergrad course projects
+                """
+                # TODO
+                for _ in range(N):
+                    path = self.select()
+                    leaf = path[-1].expand()
+                    if leaf != path[-1]:
+                        path.append(leaf)
+                    self.update(path, leaf.simulate())
+
+                return self.take_action()
 
     def get_top_k_designs(self, k=10):
         self.log.info(f'Get top {k} designs')
