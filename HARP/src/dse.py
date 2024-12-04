@@ -949,7 +949,8 @@ class MCTSNode():
         Might be similar to Explorer.apply_design_point()
         """
         # TODO
-        self.state.append(action)
+        loop = list(action.keys())[0]
+        self.state[loop] = action[loop]
 
     def is_not_terminated(self):
         """
