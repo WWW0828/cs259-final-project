@@ -8,6 +8,26 @@ This project explores advanced techniques for design space exploration (DSE) in 
 > See our [proposal](documentations/proposal.pdf) for more information.
 
 ## Technical Details
+- It is helpful to become familiar with both `parameter.py` and `dse.py`
+- We will mainly work on `dse.py`.
+
+### To run the project
+```
+# clone the repo in your home directory
+git clone https://github.com/WWW0828/cs259-final-project.git
+# attach to a tmux session
+tmux a      # or create one with: tmux
+# pull docker container
+docker pull ghcr.io/ucla-vast/hls-vast-lab:latest
+# run docker
+docker run --user $(id -u):100 -v /d0/class:/home -it ghcr.io/ucla-vast/hls-vast-lab:latest /bin/bash
+# mount home directory to docker
+export HOME=/home/[your sID]
+# modify config.py (if needed) and run main.py
+cd cs259-final-project/HARP/src
+python3 -W ignore main.py
+```
+
 ### 1. Reinforcement Learning
 Train the Policy and Value Networks with
 #### Policy Network
