@@ -937,16 +937,19 @@ class MCTSExplorer(Explorer):
         if self.policy_network_path and self.value_network_path:
             self.policy_network.load_state_dict(torch.load(self.policy_network_path))
             self.value_network.load_state_dict(torch.load(self.value_network_path))
+        
+        self.mcts_root = MCTSNode()
         self.log.info('Done init')
 
     class MCTSNode():
-        def __init__(self, point = None, win = 0, visit = 0, children = None, parent = None):
+        def __init__(self, point = None, win = 0, visit = 0, children = None, parent = None, max_explored_nodes = 1000):
             self.point: DesignPoint = point # Design Point
             self.win = win
             self.visit = visit
             self.children: List[MCTSNode] = children
             self.parent: MCTSNode = parent
             self.legal_actions = self.get_legal_actions()
+            self.max_explored_nodes = max_explored_nodes
         def ucb_score(self, c=2):
             exploit = self.win/self.visit
             explore = math.sqrt(math.log(self.parent.visit) / self.visit)
@@ -1056,19 +1059,33 @@ class MCTSExplorer(Explorer):
             for p in path:
                 p.win += reward
                 p.visit += 1
-        def run_mcts(self, N):
+        
+        def get_best_design():
+            path = []
+            cur_node = self
+            while cur_node.children:
+                cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
+                path.append(cur_node)
+            return path[-1]     
+
+        def run_mcts(self):
             """
             Run MCTS and retrieve the top k actions
             Check HARP/src/mcts_sample_code.h, it's from one of my undergrad course projects
             """
             # TODO
-            for _ in range(N):
+            for _ in range(self.max_explored_nodes):
                 path = self.select()
                 leaf = path[-1].expand()
                 if leaf != path[-1]:
                     path.append(leaf)
                 self.update(path, leaf.simulate())
-            return self.take_action()
+            
+            return self.get_best_design()
+
+    def run(self):
+        best_design = self.mcts_root.run_mcts()
+        self.log.info('Best design point after MCTS:', best_design.point)
 
     def get_top_k_designs(self, k=10):
         self.log.info(f'Get top {k} designs')
