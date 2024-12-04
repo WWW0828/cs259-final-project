@@ -17,6 +17,8 @@ Given the current state (design), output the estimated design quality (compute w
 #### Reward Function
 Compute by the 2 pretrained models (classification, regression)
 ### 2. Monte Carlo Tree Search (MCTS)
+![](doc/MCTS-algorithm-overview.png)
+
 #### Selection
 Traverse the tree from the root to a leaf using a policy like UCT (Upper Confidence Bounds for Trees)
 #### Expansion

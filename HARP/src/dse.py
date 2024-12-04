@@ -946,6 +946,7 @@ class MCTSExplorer(Explorer):
                 self.visit = visit
                 self.children = children
                 self.parent = parent
+                self.legal_actions = self.get_legal_actions()
 
             def ucb_score(self, c=2):
                 exploit = self.win/self.visit
@@ -996,8 +997,8 @@ class MCTSExplorer(Explorer):
                 Might be similar to Explorer.apply_design_point()
                 """
                 # TODO
-                loop = list(action.keys())[0]
-                self.state[loop] = action[loop]
+                pragma_name = list(action.keys())[0]
+                self.state[pragma_name] = action[pragma_name]
 
             def is_not_terminated(self):
                 """
@@ -1006,7 +1007,7 @@ class MCTSExplorer(Explorer):
                     Idea 2: if applying more pragmas does not improve the design
                 """
                 # TODO
-                return len(self.children) < len(self.get_legal_actions())
+                return len(self.children) < self.legal_actions
 
             def copy_self_node(self):
                 return MCTSNode(self.state, self.win, self.visit, self.children[:], self.parent)
@@ -1029,9 +1030,8 @@ class MCTSExplorer(Explorer):
                 Expand the current node and return the newly expanded child node
 	        	if the current node has no unexpanded move, it returns itself
                 """
-                legal_actions = self.get_legal_actions()
                 new_child = self.copy_self_node()
-                for action in legal_actions:
+                for action in self.legal_actions:
                     new_child.apply_action(action)
                     is_expanded = False # TODO
                     if not is_expanded:
@@ -1048,7 +1048,7 @@ class MCTSExplorer(Explorer):
                     Idea 2: if applying more pragmas does not improve the design
                 """
                 rollout = self.copy_self_node()
-                legal_actions = self.get_legal_actions()
+                legal_actions = self.legal_actions
 
                 while legal_actions:
                     rollout.apply_action(legal_actions[0])
