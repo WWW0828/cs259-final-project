@@ -52,6 +52,7 @@ if __name__ == '__main__':
             else: graph_types = [FLAGS.graph_type]
 
             for dataset in ['machsuite', 'poly']:
+                saver.info(f'########## Dataset: {dataset} ##########')
                 path = join(get_root_path(), 'dse_database', dataset, 'config')
                 path_graph = join(get_root_path(), 'dse_database', 'generated_graphs', dataset, 'processed')
                 if dataset == 'machsuite':   
@@ -61,6 +62,7 @@ if __name__ == '__main__':
                 else:
                     raise NotImplementedError()
                 
+                saver.info(f'########## Num of Kernels: {len(KERNELS)} ##########')
                 for kernel in KERNELS:
                     if not FLAGS.all_kernels and not FLAGS.target_kernel in kernel:
                         continue

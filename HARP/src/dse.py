@@ -1107,7 +1107,6 @@ class MCTSNode():
 
         self.log.info(f'[update] done')
 
-    
     def get_best_design(self):
         path = []
         cur_node = self
