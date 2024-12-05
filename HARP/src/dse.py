@@ -969,6 +969,10 @@ class MCTSNode():
             except NameError as e:
                 self.log.error(f'[Get Legal Actions] Failed to evaluate options for parameter {pid} due to NameError: {str(e)}')
                 sys.exit(1)
+<<<<<<< HEAD
+=======
+
+>>>>>>> 14d0fca (merge conflict)
             for option in options:
                 action = (param.name, option)
                 points.append(action)
