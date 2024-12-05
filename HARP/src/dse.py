@@ -961,7 +961,13 @@ class MCTSNode():
             #self.log.info('[Get Legal Actions]' + param.to_string())
             if param.name[8:] in inserted_loops:
                 continue
-            options = eval(param.option_expr, {k:v for k,v in self.point.items()})
+            # options = eval(param.option_expr, {k:v for k,v in self.point.items()})
+            try:
+                options = eval(param.option_expr, {k:v for k,v in self.point.items()})
+                self.log.info(f'[Get Legal Actions] Options for parameter {pid}: {options}')
+            except NameError as e:
+                self.log.error(f'[Get Legal Actions] Failed to evaluate options for parameter {pid} due to NameError: {str(e)}')
+                sys.exit(1)
             for option in options:
                 action = (param.name, option)
                 points.append(action)
@@ -981,6 +987,8 @@ class MCTSNode():
         self.children = []
         self.parent = self
         self.legal_actions = self.get_legal_actions()
+        self.log.info(f"[Apply Action] Updated point: {self.point}, legal actions after update: {self.legal_actions}")
+
     def is_not_terminated(self):
         """
         Need further discussions
