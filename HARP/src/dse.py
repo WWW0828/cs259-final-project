@@ -931,16 +931,19 @@ class MCTSNode():
         self.parent: MCTSNode = parent
         self.legal_actions = self.get_legal_actions()
         self.log.info(f'[init] Done: point={self.point}, win/visit={self.win}/{self.visit}, children={self.children}, legal actions={self.legal_actions}')
+
     def ucb_score(self, c=2):
         exploit = self.win/self.visit
         explore = math.sqrt(math.log(self.parent.visit) / self.visit)
         return exploit + math.sqrt(c) * explore
+
     def compute_reward(self):
         """
         Compute reward of the given state (design) based on the pretrained classification (validation) and regression (resources usage and latency) models
         """
         # TODO
         return 0
+
     def get_legal_actions(self) -> list[tuple]:
         """
         Generate a list of DesignPoints that contains all the possible pragmas that can be inserted to current DesignPoint, only insert one single pragma at once
@@ -950,7 +953,6 @@ class MCTSNode():
         """
         points = []
         inserted_loops = set()
-        self.log.info(f'[Get Legal Actions] of: {self.point}')
         if self.point:
             for name in self.point.keys():
                 inserted_loops.add(name[8:])
@@ -958,7 +960,6 @@ class MCTSNode():
         for sid in range(len(sorted_ids)):
             pid = sorted_ids[sid]
             param = self.ds[pid]
-            #self.log.info('[Get Legal Actions]' + param.to_string())
             if param.name[8:] in inserted_loops:
                 continue
             # options = eval(param.option_expr, {k:v for k,v in self.point.items()})
@@ -971,7 +972,7 @@ class MCTSNode():
             for option in options:
                 action = (param.name, option)
                 points.append(action)
-        self.log.info(f'#legal actions: {len(points)}, legal actions: {points}')
+        self.log.info(f'[legal action] point: {self.point} #actions: {len(points)}, actions: {points}')
         return points
     
     def apply_action(self, action):
@@ -984,19 +985,19 @@ class MCTSNode():
         # TODO
         self.log.info(f"apply action: {action} to point: {self.point}")
         self.point[action[0]] = action[1]
-        self.children = []
-        self.parent = self
         self.legal_actions = self.get_legal_actions()
-        self.log.info(f"[Apply Action] Updated point: {self.point}, legal actions after update: {self.legal_actions}")
+        self.children.clear()
 
-    def is_not_terminated(self):
+    def is_selectable(self):
         """
+        Check whether this node is a fully-expanded non-terminal node
         Need further discussions
             Idea 1: if there's no further valid actions possible
             Idea 2: if applying more pragmas does not improve the design
         """
         # TODO: implement idea 2
-        return self.children == None or len(self.children) < len(self.legal_actions)
+        return self.children and len(self.children) == len(self.legal_actions)
+
     def copy_self_node(self):
         self.log.info(f'[copy self node] point: {self.point}')
         return MCTSNode(
@@ -1006,30 +1007,44 @@ class MCTSNode():
             point={k: v for k, v in self.point.items()},
             win=self.win,
             visit=self.visit,
-            children=deepcopy(self.children),
+            children=[child for child in self.children],
             parent=self.parent
         )
+    
+    def generate_leaf_node(self):
+        self.log.info(f'[generate leaf node] point: {self.point}')
+        return MCTSNode(
+            log=self.log,
+            ds=self.ds,
+            max_explored_nodes=self.max_explored_nodes,
+            point={k: v for k, v in self.point.items()},
+            parent=self,
+            children=[]
+        )
+
     def select(self):
         """
         Starting at root node R, recursively select optimal child nodes until a leaf node L is reached
         """
-        self.log.info('[select] start')
+        self.log.info('[select] starts...')
         cur_node = self
         path = [cur_node]
-        while cur_node.is_not_terminated() and cur_node.children:
+        while cur_node.is_selectable() :
             self.log.info(f'[select] current: {cur_node.point}')
-            for c in cur_node.children:
-                self.log.info(f'[select] children {c.point}, ucb score c.ucb_score')
+            # for c in cur_node.children:
+            #     self.log.info(f'[select] child {c.point}, ucb score {c.ucb_score()}')
             cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
-            self.log.info(f'[select] select child: {cur_node.point}')
+            self.log.info(f'[select] best child: {cur_node.point}, #legal actions: {len(cur_node.legal_actions)}, child.children: {[child.point for child in cur_node.children]}')
             path.append(cur_node)
+        self.log.info(f'[select] done, path: {[p.point for p in path]}')
         return path
+
     def expand(self):
         """
         Expand the current node and return the newly expanded child node
 		if the current node has no unexpanded move, it returns itself
         """
-        self.log.info('[expand] starts')
+        self.log.info('[expand] starts...')
         for action in self.legal_actions:
             # Check if this action has been expanded
             # -- check if it exists in children
@@ -1037,16 +1052,20 @@ class MCTSNode():
             if self.children:
                 for child in self.children:
                     if action[0] in child.point.keys():
-                        is_expanded = True
-                        break
-                    
+                        if child.point[action[0]] == action[1]:
+                            is_expanded = True
+                            break
+            # self.log.info(f'[expand] check: {action} is expanded: {is_expanded}, expanded actions={[child.point for child in self.children]}')
             if not is_expanded:
-                new_child = self.copy_self_node()
+                new_child = self.generate_leaf_node()
                 new_child.apply_action(action)
-                self.log.info(f'[expand] append {action} to children')
                 self.children.append(new_child)
+                self.log.info(f'[expand] append {action} to children, now children={[child.point for child in self.children]}')
                 return new_child
+            
+        self.log.info(f'[expand] nothing availavle to expand, return self')
         return self
+
     def simulate(self):
         """
         Run a simulated playout from C until a result is achieved.
@@ -1054,20 +1073,30 @@ class MCTSNode():
             Idea 1: if there's no further actions possible
             Idea 2: if applying more pragmas does not improve the design
         """
-        self.log.info('[simulate] start')
+        self.log.info('[simulate] starts...')
         rollout = self.copy_self_node()
         legal_actions = self.legal_actions
         while legal_actions:
             rollout.apply_action(legal_actions[0])
             legal_actions = rollout.get_legal_actions()
-        return rollout.compute_reward()
+        reward = rollout.compute_reward()
+        self.log.info(f'[simulate] done, simulation reward: {reward}')
+        return reward
     def update(self, path, reward):
         """
 		Update statistics for all nodes saved in the path
         """
+        self.log.info(f'[update] update mcts tree')
         for p in path:
             p.win += reward
             p.visit += 1
+            if p.parent:
+                self.log.info(f'[update] point: {p.point}, win/visit: {p.win}/{p.visit} parent point: {p.parent.point}, win/visit: {p.parent.win}/{p.parent.visit}')
+            else:
+                self.log.info(f'[update] point: {p.point}, win/visit: {p.win}/{p.visit} no parent')
+
+        self.log.info(f'[update] done')
+
     
     def get_best_design(self):
         path = []
@@ -1075,14 +1104,17 @@ class MCTSNode():
         while cur_node.children:
             cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
             path.append(cur_node)
-        return path[-1]     
+        self.log.info(f'[get best design] {path[-1].point}')
+        return path[-1]  
+       
     def run_mcts(self):
         """
         Run MCTS and retrieve the top k actions
         Check HARP/src/mcts_sample_code.h, it's from one of my undergrad course projects
         """
         # TODO
-        for _ in range(self.max_explored_nodes):
+        for i in range(self.max_explored_nodes):
+            self.log.info(f'[run_mcts] iter {i+1}/{self.max_explored_nodes}')
             path = self.select()
             leaf = path[-1].expand()
             if leaf != path[-1]:
@@ -1090,13 +1122,14 @@ class MCTSNode():
             self.update(path, leaf.simulate())
         
         return self.get_best_design()
+    
 
 
 class MCTSExplorer(Explorer):
     
     def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, 
                  run_dse: bool = True, prune_invalid = FLAGS.prune_class, point: DesignPoint = None, 
-                 pragma_dim = None, max_explored_nodes = 75000, policy_network_path = None, value_network_path = None):
+                 pragma_dim = None, max_explored_nodes = 15, policy_network_path = None, value_network_path = None):
         """
         Parameters:
         max_explored_nodes: maximum number of action (node) to search during MCTS
