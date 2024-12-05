@@ -19,7 +19,7 @@ class DesignParameter(object):
         self.child: List[str] = []
         self.value: Union[str, int] = 1
     def to_string(self):
-        return f'(name: {self.name}, default: {self.default}, option_expr: {self.option_expr}, scope: {self.scope}, order: {self.order}, deps: {self.deps})'
+        return f'{{name: {self.name}, default: {self.default}, option_expr: {self.option_expr}, scope: {self.scope}, order: {self.order}, deps: {self.deps}}}'
 
 
 DesignSpace = Dict[str, DesignParameter]
@@ -345,7 +345,7 @@ def compile_design_space(user_ds_config: Dict[str, Dict[str, Union[str, int]]],
     for param_id, param_config in user_ds_config.items():
         param = create_design_parameter(param_id, param_config, DesignParameter, log)
         if count < 5:
-            log.info(f'[Compile DS] param_id: {param_id}, param_config: {param_config}')
+            log.info(f'[Compile DS] param_id: {param_id}, param_config: {param_config}, param: {param.to_string()}')
             count += 1
         if param:               
             if param.ds_type not in [
@@ -365,7 +365,7 @@ def compile_design_space(user_ds_config: Dict[str, Dict[str, Union[str, int]]],
     analyze_child_in_design_space(params)
 
     num_ds = count_design_points(params, log)
-    log.info((f'Design space contains {num_ds} valid design points'))
+    log.info((f'Design space contains {num_ds} valid design points, #params: {len(params)}'))
     log.info('Finished design space compilation')
     return params, num_ds
 

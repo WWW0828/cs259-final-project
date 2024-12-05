@@ -962,6 +962,13 @@ class MCTSNode():
             param = self.ds[pid]
             if param.name[8:] in inserted_loops:
                 continue
+            check_dep = True
+            for dep in param.deps:
+                if dep not in self.point.keys():
+                    check_dep = False
+                    break
+            if not check_dep:
+                continue
             # options = eval(param.option_expr, {k:v for k,v in self.point.items()})
             try:
                 options = eval(param.option_expr, {k:v for k,v in self.point.items()})
@@ -982,7 +989,6 @@ class MCTSNode():
         Args:
             action: tuple(pragma, option/factor)
         """
-        # TODO
         self.log.info(f"apply action: {action} to point: {self.point}")
         self.point[action[0]] = action[1]
         self.legal_actions = self.get_legal_actions()
@@ -1012,6 +1018,9 @@ class MCTSNode():
         )
     
     def generate_leaf_node(self):
+        """
+        Create a child node for self (initialize parent=self), the created node will be used by apply_action()
+        """
         self.log.info(f'[generate leaf node] point: {self.point}')
         return MCTSNode(
             log=self.log,
@@ -1082,6 +1091,7 @@ class MCTSNode():
         reward = rollout.compute_reward()
         self.log.info(f'[simulate] done, simulation reward: {reward}')
         return reward
+
     def update(self, path, reward):
         """
 		Update statistics for all nodes saved in the path
