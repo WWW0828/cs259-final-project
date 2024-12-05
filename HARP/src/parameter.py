@@ -307,7 +307,7 @@ def count_design_points(ds: DesignSpace, log) -> int:
         pid = sorted_ids[idx]
         param = ds[pid]
         options = eval(param.option_expr, point)
-        log.info(f'option_expr: {param.option_expr}, point: {point}, options: {options}')
+        # log.info(f'option_expr: {param.option_expr}, point: {point}, options: {options}')
 
         counter = 0
         if param.child:
@@ -345,7 +345,7 @@ def compile_design_space(user_ds_config: Dict[str, Dict[str, Union[str, int]]],
     for param_id, param_config in user_ds_config.items():
         param = create_design_parameter(param_id, param_config, DesignParameter, log)
         if count < 5:
-            log.info(f'[Compile DS] param_id: {param_id}, param_config: {param_config}, param: {param.to_string()}')
+            log.info(f'[Compile DS] param_id: {param_id}, param_config: {param_config}')
             count += 1
         if param:               
             if param.ds_type not in [

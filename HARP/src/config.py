@@ -267,7 +267,7 @@ parser.add_argument('--device', default=device)
 
 
 ################# DSE details ##################
-explorer = 'exhaustive'
+explorer = 'mcts'
 parser.add_argument('--explorer', default=explorer)
 
 model_tag = 'test'
