@@ -920,11 +920,12 @@ class ExhaustiveExplorer(Explorer):
         self.log.info(f'Explored {self.explored_point} points')
 
 class MCTSNode():
-    def __init__(self, log, ds = {}, max_explored_nodes = 1000, point = {}, win = 0, visit = 0, children = None, parent = None):
+    def __init__(self, log, explorer, ds = {}, max_explored_nodes = 1000, point: DesignPoint = None, win = 0, visit = 0, children = None, parent = None):
         self.log = log
         self.ds = ds
+        self.explorer = explorer
         self.max_explored_nodes = max_explored_nodes
-        self.point: DesignPoint = point # Design Point
+        self.point: DesignPoint = point or self.explorer.gen_start_point() # Design Point
         self.win = win
         self.visit = visit
         self.children = [] if children == None else children # cannot simply set default value to [] because of list's mutable property
@@ -941,8 +942,42 @@ class MCTSNode():
         """
         Compute reward of the given state (design) based on the pretrained classification (validation) and regression (resources usage and latency) models
         """
+        self.explorer.prune_invalid = False
+        results = self.explorer.get_results([self.point])
+
+        if not results or results[0] == float("inf"):
+            self.log.error(f"Invalid result for point: {self.point}")
+            return -float("inf")
+
+        result = results[0]
+        self.log.info(f'Point: {self.point}')
+        self.log.info(f'Result: {dir(result)}')
+
+        performance = result.perf
+        resource_utilization = result.res_util
+
+        config = self.explorer.config['evaluate']
+        self.log.info(config)
+        max_utils = config['max-util']
+        util_normalizer = config.get('util_normalizer', 1.0)
+
+        if performance > 0:
+            perf_reward = 1.0 / performance
+        else:
+            perf_reward = 0
+
+        penalty = 0
+        for res, max_value in max_utils.items():
+            normalized_util = resource_utilization.get(f'util-{res}', 0) / util_normalizer
+            if normalized_util > max_value:
+                # Apply heavy penalty if over-utilized
+                penalty += (normalized_util - max_value) ** 2
+
+        # Combine rewards and penalties
+        reward = perf_reward - penalty
+        self.log.info(f"Computed reward: {reward} for point {self.point}")
         # TODO
-        return random.uniform(0, 1)
+        return reward
 
     def get_legal_actions(self) -> list[tuple]:
         """
@@ -1003,6 +1038,7 @@ class MCTSNode():
         return MCTSNode(
             log=self.log,
             ds=self.ds,
+            explorer = self.explorer,
             max_explored_nodes=self.max_explored_nodes,
             point={k: v for k, v in self.point.items()},
             win=self.win,
@@ -1019,6 +1055,7 @@ class MCTSNode():
         return MCTSNode(
             log=self.log,
             ds=self.ds,
+            explorer = self.explorer,
             max_explored_nodes=self.max_explored_nodes,
             point={k: v for k, v in self.point.items()},
             parent=self
@@ -1154,7 +1191,7 @@ class MCTSExplorer(Explorer):
             self.policy_network.load_state_dict(torch.load(self.policy_network_path))
             self.value_network.load_state_dict(torch.load(self.value_network_path))
 
-        self.mcts_root = MCTSNode(log=self.log, ds=self.ds, max_explored_nodes=self.max_explored_nodes)
+        self.mcts_root = MCTSNode(log=self.log, ds=self.ds, explorer = self, max_explored_nodes=self.max_explored_nodes)
         self.log.info(f'Done MCTSExplorer init, #MCTS-Simulation={self.max_explored_nodes}')
 
         if self.run_dse:
@@ -1163,6 +1200,10 @@ class MCTSExplorer(Explorer):
     def run(self):
         best_design = self.mcts_root.run_mcts()
         self.log.info('Best design point after MCTS:', best_design.point)
+    
+    def gen_start_point(self):
+        initial_point = get_default_point(self.ds)
+        return initial_point
 
     def get_top_k_designs(self, k=10):
         self.log.info(f'Get top {k} designs')
