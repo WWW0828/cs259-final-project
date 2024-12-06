@@ -927,7 +927,7 @@ class MCTSNode():
         self.point: DesignPoint = point # Design Point
         self.win = win
         self.visit = visit
-        self.children = [] if children == None else children
+        self.children = [] if children == None else children # cannot simply set default value to [] because of list's mutable property
         self.parent: MCTSNode = parent
         self.legal_actions = self.get_legal_actions()
         self.log.info(f'[init] point={self.point}, win/visit={self.win}/{self.visit}, children: {[c.point for c in self.children]}, legal actions: {self.legal_actions}')
@@ -942,7 +942,7 @@ class MCTSNode():
         Compute reward of the given state (design) based on the pretrained classification (validation) and regression (resources usage and latency) models
         """
         # TODO
-        return 0
+        return random.uniform(0, 1)
 
     def get_legal_actions(self) -> list[tuple]:
         """
@@ -1099,13 +1099,19 @@ class MCTSNode():
                 self.log.info(f'         point: {p.point}, win/visit: {p.win}/{p.visit} no parent')
 
     def get_best_design(self):
-        path = []
+        """
+        Return the node in the path [root->leaf] that has the higest reward that child is selected by the ucb score
+        """
         cur_node = self
+        max_reward, max_node = cur_node.compute_reward(), cur_node
         while cur_node.children:
             cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
-            path.append(cur_node)
-        self.log.info(f'[get best design] {path[-1].point}')
-        return path[-1]  
+            reward = cur_node.compute_reward()
+            if reward > max_reward:
+                max_reward = reward
+                max_node = cur_node
+        self.log.info(f'[get best design] {max_node.point}')
+        return max_node  
        
     def run_mcts(self):
         """
