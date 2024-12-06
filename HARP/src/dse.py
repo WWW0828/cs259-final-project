@@ -34,6 +34,7 @@ import numpy as np
 
 import random
 from pprint import pprint
+import matplotlib.pyplot as plt
 
 
 TARGET = ['perf', 'util-DSP', 'util-BRAM', 'util-LUT', 'util-FF']
@@ -945,6 +946,7 @@ class MCTSNode():
         """
         Compute reward of the given state (design) based on the pretrained classification (validation) and regression (resources usage and latency) models
         """
+
         self.explorer.prune_invalid = False
         results = self.explorer.get_results([self.point])
 
@@ -979,7 +981,7 @@ class MCTSNode():
         # Combine rewards and penalties
         reward = perf_reward - penalty
         self.log.info(f"Computed reward: {reward} for point {self.point}")
-        # TODO
+
         return reward
 
     def get_legal_actions(self) -> list[tuple]:
@@ -996,14 +998,9 @@ class MCTSNode():
             param = self.ds[pid]
             if param.name in self.seen_pragmas:
                 continue
-            if self.pragma_level != None and param.name != self.pragma_level:
-                continue
-            if self.children and self.children.pragma_level != None:
-                if param.name != self.self.children.pragma_level:
-                    continue
             options = eval(param.option_expr, {k:v for k,v in self.point.items()})
             for option in options:
-                if option == self.point[param.name]:
+                if option == param.default or option == self.point[param.name]:
                     continue
                 action = (param.name, option)
                 points.append(action)
@@ -1019,10 +1016,8 @@ class MCTSNode():
         """
         self.pragma_level = action[0]
         self.point[action[0]] = action[1]
-        self.log.info(f'[apply action] parent\'s legal actions (before): {self.parent.legal_actions}')
-        self.parent.legal_actions = [parent_la for parent_la in self.parent.legal_actions if parent_la[0] == action[0]]
-        self.log.info(f'[apply action] parent\'s legal actions (after): {self.parent.legal_actions}')
-        self.legal_actions = [la for la in self.legal_actions if la[0] != action[0]]
+        self.seen_pragmas.append(action[0])
+        self.legal_actions = self.get_legal_actions()
         self.children.clear()
         self.log.info(f'[apply action] action: {action}, point after applied; {self.point}, pragma_level: {self.pragma_level}, seen_pragmas: {self.seen_pragmas}')
 
@@ -1059,15 +1054,14 @@ class MCTSNode():
         """
         Create a child node for self (initialize parent=self), the created node will be used by apply_action()
         """
-        self.log.info(f'[generate leaf node] point: {self.point}, seen pragmas: {self.seen_pragmas[:]} + {[self.pragma_level]}')
+        self.log.info(f'[generate leaf node] point: {self.point}, seen pragmas: {self.seen_pragmas[:]}')
         return MCTSNode(
             log=self.log,
             ds=self.ds,
             explorer = self.explorer,
             max_explored_nodes=self.max_explored_nodes,
             point={k: v for k, v in self.point.items()},
-            seen_pragmas = self.seen_pragmas[:] + [self.pragma_level] if self.pragma_level else self.seen_pragmas[:],
-            legal_actions=self.legal_actions,
+            seen_pragmas = self.seen_pragmas[:], # + [self.pragma_level] if self.pragma_level else self.seen_pragmas[:],
             parent=self
         )
 
@@ -1095,8 +1089,6 @@ class MCTSNode():
             # -- check if it exists in children
             is_expanded = False
             if self.children:
-                if self.children[0].pragma_level != None and action[0] != self.children[0].pragma_level:
-                        continue
                 for child in self.children:
                     if child.point[action[0]] == action[1]:
                         is_expanded = True
@@ -1159,7 +1151,7 @@ class MCTSNode():
                 max_reward = reward
                 max_node = cur_node
         self.log.info(f'[get best design] reward: {max_reward}, point: {max_node.point}')
-        return max_node  
+        return max_reward, max_node.point  
        
     def run_mcts(self):
         """
@@ -1167,6 +1159,8 @@ class MCTSNode():
         Check HARP/src/mcts_sample_code.h, it's from one of my undergrad course projects
         """
         # TODO
+        rewards = []
+        step = 20
         for i in range(self.max_explored_nodes):
             self.log.info(f'[run_mcts] iter {i+1}/{self.max_explored_nodes}')
             path = self.select()
@@ -1174,8 +1168,22 @@ class MCTSNode():
             if leaf != path[-1]:
                 path.append(leaf)
             self.update(path, leaf.simulate())
-        
-        return self.get_best_design()
+            if i % step == 0:
+                best_reward, best_design_point = self.get_best_design()
+                rewards.append(best_reward)
+                self.log.info(f'iter {i+1}/{self.max_explored_nodes}, best reward: {best_reward}')
+        best_reward, best_design_point = self.get_best_design()
+        rewards.append(best_reward)
+        x = [i+1 for i in range(0, self.max_explored_nodes, step)] + [self.max_explored_nodes]
+        plt.plot(x, rewards)
+        plt.grid(visible=True, color='gray', linestyle='--', linewidth=0.5)
+
+        plt.title(f"Kernel: {self.explorer.kernel_name}")
+        plt.xlabel("# MCTS iterations")
+        plt.ylabel("Reward")
+        plt.savefig(f'results/{self.explorer.kernel_name}.png', format='png', dpi=300)  # Save as PNG with high resolution
+        plt.close()
+        return best_reward, best_design_point
     
 
 
@@ -1183,7 +1191,7 @@ class MCTSExplorer(Explorer):
     
     def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, 
                  run_dse: bool = True, prune_invalid = FLAGS.prune_class, point: DesignPoint = None, 
-                 pragma_dim = None, max_explored_nodes = 50, policy_network_path = None, value_network_path = None):
+                 pragma_dim = None, max_explored_nodes = 1000, policy_network_path = None, value_network_path = None):
         """
         Parameters:
         max_explored_nodes: maximum number of action (node) to search during MCTS
@@ -1209,8 +1217,8 @@ class MCTSExplorer(Explorer):
             self.run()
 
     def run(self):
-        best_design = self.mcts_root.run_mcts()
-        self.log.info('Best design point after MCTS:', best_design.point)
+        best_reward, best_design = self.mcts_root.run_mcts()
+        self.log.info(f'[MCTSExplorer] Best design point after MCTS: {best_design}, reward: {best_reward}')
     
     def gen_start_point(self):
         initial_point = get_default_point(self.ds)
