@@ -920,18 +920,18 @@ class ExhaustiveExplorer(Explorer):
         self.log.info(f'Explored {self.explored_point} points')
 
 class MCTSNode():
-    def __init__(self, log, ds = {}, max_explored_nodes = 1000, point = {}, win = 0, visit = 0, children = [], parent = None):
+    def __init__(self, log, ds = {}, max_explored_nodes = 1000, point = {}, win = 0, visit = 0, children = None, parent = None):
         self.log = log
         self.ds = ds
         self.max_explored_nodes = max_explored_nodes
         self.point: DesignPoint = point # Design Point
         self.win = win
         self.visit = visit
-        self.children: List[MCTSNode] = children
+        self.children = [] if children == None else children
         self.parent: MCTSNode = parent
         self.legal_actions = self.get_legal_actions()
-        self.log.info(f'[init] Done: point={self.point}, win/visit={self.win}/{self.visit}, children={self.children}, legal actions={self.legal_actions}')
-
+        self.log.info(f'[init] point={self.point}, win/visit={self.win}/{self.visit}, children: {[c.point for c in self.children]}, legal actions: {self.legal_actions}')
+    
     def ucb_score(self, c=2):
         exploit = self.win/self.visit
         explore = math.sqrt(math.log(self.parent.visit) / self.visit)
@@ -969,13 +969,7 @@ class MCTSNode():
                     break
             if not check_dep:
                 continue
-            # options = eval(param.option_expr, {k:v for k,v in self.point.items()})
-            try:
-                options = eval(param.option_expr, {k:v for k,v in self.point.items()})
-                self.log.info(f'[Get Legal Actions] Options for parameter {pid}: {options}')
-            except NameError as e:
-                self.log.error(f'[Get Legal Actions] Failed to evaluate options for parameter {pid} due to NameError: {str(e)}')
-                sys.exit(1)
+            options = eval(param.option_expr, {k:v for k,v in self.point.items()})
             for option in options:
                 action = (param.name, option)
                 points.append(action)
@@ -1027,23 +1021,22 @@ class MCTSNode():
             ds=self.ds,
             max_explored_nodes=self.max_explored_nodes,
             point={k: v for k, v in self.point.items()},
-            parent=self,
-            children=[]
+            parent=self
         )
 
     def select(self):
         """
         Starting at root node R, recursively select optimal child nodes until a leaf node L is reached
         """
-        self.log.info('[select] starts...')
+        # self.log.info('[select] starts...')
         cur_node = self
         path = [cur_node]
         while cur_node.is_selectable() :
-            self.log.info(f'[select] current: {cur_node.point}')
+            # self.log.info(f'[select] current: {cur_node.point}')
             # for c in cur_node.children:
             #     self.log.info(f'[select] child {c.point}, ucb score {c.ucb_score()}')
             cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
-            self.log.info(f'[select] best child: {cur_node.point}, #legal actions: {len(cur_node.legal_actions)}, child.children: {[child.point for child in cur_node.children]}')
+            # self.log.info(f'[select] best child: {cur_node.point}, #legal actions: {len(cur_node.legal_actions)}, child.children: {[child.point for child in cur_node.children]}')
             path.append(cur_node)
         self.log.info(f'[select] done, path: {[p.point for p in path]}')
         return path
@@ -1082,7 +1075,7 @@ class MCTSNode():
             Idea 1: if there's no further actions possible
             Idea 2: if applying more pragmas does not improve the design
         """
-        self.log.info('[simulate] starts...')
+        # self.log.info('[simulate] starts...')
         rollout = self.copy_self_node()
         legal_actions = self.legal_actions
         while legal_actions:
@@ -1101,11 +1094,9 @@ class MCTSNode():
             p.win += reward
             p.visit += 1
             if p.parent:
-                self.log.info(f'[update] point: {p.point}, win/visit: {p.win}/{p.visit} parent point: {p.parent.point}, win/visit: {p.parent.win}/{p.parent.visit}')
+                self.log.info(f'         point: {p.point}, win/visit: {p.win}/{p.visit} parent point: {p.parent.point}, win/visit: {p.parent.win}/{p.parent.visit}')
             else:
-                self.log.info(f'[update] point: {p.point}, win/visit: {p.win}/{p.visit} no parent')
-
-        self.log.info(f'[update] done')
+                self.log.info(f'         point: {p.point}, win/visit: {p.win}/{p.visit} no parent')
 
     def get_best_design(self):
         path = []
@@ -1156,14 +1147,13 @@ class MCTSExplorer(Explorer):
         if self.policy_network_path and self.value_network_path:
             self.policy_network.load_state_dict(torch.load(self.policy_network_path))
             self.value_network.load_state_dict(torch.load(self.value_network_path))
-        
+
         self.mcts_root = MCTSNode(log=self.log, ds=self.ds, max_explored_nodes=self.max_explored_nodes)
-        self.log.info('Done MCTSExplorer init')
+        self.log.info(f'Done MCTSExplorer init, #MCTS-Simulation={self.max_explored_nodes}')
 
         if self.run_dse:
             self.run()
 
-    
     def run(self):
         best_design = self.mcts_root.run_mcts()
         self.log.info('Best design point after MCTS:', best_design.point)
