@@ -421,6 +421,7 @@ class Explorer():
         return pragmas
     
     def apply_design_point(self, g, point: DesignPoint, mode = 'regression', model=None) -> Data:
+        self.log.info(f'[Explorer][apply-design-point] design point: {point}')
         if model is None: model = self.GNNmodel
         X, d_node = model.encode_node(g, point)
         edge_attr = model.encode_edge(g)
@@ -920,7 +921,7 @@ class ExhaustiveExplorer(Explorer):
         self.log.info(f'Explored {self.explored_point} points')
 
 class MCTSNode():
-    def __init__(self, log, explorer, ds = {}, max_explored_nodes = 1000, point: DesignPoint = None, win = 0, visit = 0, children = None, parent = None):
+    def __init__(self, log, explorer, ds = {}, max_explored_nodes = 1000, point = {}, win = 0, visit = 0, pragma_level = None, seen_pragmas = None, children = None, parent = None, legal_actions = None):
         self.log = log
         self.ds = ds
         self.explorer = explorer
@@ -928,9 +929,11 @@ class MCTSNode():
         self.point: DesignPoint = point or self.explorer.gen_start_point() # Design Point
         self.win = win
         self.visit = visit
+        self.pragma_level = pragma_level
+        self.seen_pragmas = [] if seen_pragmas == None else seen_pragmas
         self.children = [] if children == None else children # cannot simply set default value to [] because of list's mutable property
         self.parent: MCTSNode = parent
-        self.legal_actions = self.get_legal_actions()
+        self.legal_actions = self.get_legal_actions() if legal_actions == None else legal_actions
         self.log.info(f'[init] point={self.point}, win/visit={self.win}/{self.visit}, children: {[c.point for c in self.children]}, legal actions: {self.legal_actions}')
     
     def ucb_score(self, c=2):
@@ -987,25 +990,21 @@ class MCTSNode():
             All possible ways to insert one pragma to the current design
         """
         points = []
-        inserted_loops = set()
-        if self.point:
-            for name in self.point.keys():
-                inserted_loops.add(name[8:])
         sorted_ids = topo_sort_param_ids(self.ds)
         for sid in range(len(sorted_ids)):
             pid = sorted_ids[sid]
             param = self.ds[pid]
-            if param.name[8:] in inserted_loops:
+            if param.name in self.seen_pragmas:
                 continue
-            check_dep = True
-            for dep in param.deps:
-                if dep not in self.point.keys():
-                    check_dep = False
-                    break
-            if not check_dep:
+            if self.pragma_level != None and param.name != self.pragma_level:
                 continue
+            if self.children and self.children.pragma_level != None:
+                if param.name != self.self.children.pragma_level:
+                    continue
             options = eval(param.option_expr, {k:v for k,v in self.point.items()})
             for option in options:
+                if option == self.point[param.name]:
+                    continue
                 action = (param.name, option)
                 points.append(action)
         self.log.info(f'[legal action] point: {self.point} #actions: {len(points)}, actions: {points}')
@@ -1018,10 +1017,14 @@ class MCTSNode():
         Args:
             action: tuple(pragma, option/factor)
         """
-        self.log.info(f"apply action: {action} to point: {self.point}")
+        self.pragma_level = action[0]
         self.point[action[0]] = action[1]
-        self.legal_actions = self.get_legal_actions()
+        self.log.info(f'[apply action] parent\'s legal actions (before): {self.parent.legal_actions}')
+        self.parent.legal_actions = [parent_la for parent_la in self.parent.legal_actions if parent_la[0] == action[0]]
+        self.log.info(f'[apply action] parent\'s legal actions (after): {self.parent.legal_actions}')
+        self.legal_actions = [la for la in self.legal_actions if la[0] != action[0]]
         self.children.clear()
+        self.log.info(f'[apply action] action: {action}, point after applied; {self.point}, pragma_level: {self.pragma_level}, seen_pragmas: {self.seen_pragmas}')
 
     def is_selectable(self):
         """
@@ -1031,6 +1034,8 @@ class MCTSNode():
             Idea 2: if applying more pragmas does not improve the design
         """
         # TODO: implement idea 2
+        self.log.info(f"[is_selectable] legal_actions: {self.legal_actions}")
+        self.log.info(f"[is_selectable] children: {[c.point for c in self.children]}")
         return self.children and len(self.children) == len(self.legal_actions)
 
     def copy_self_node(self):
@@ -1043,21 +1048,26 @@ class MCTSNode():
             point={k: v for k, v in self.point.items()},
             win=self.win,
             visit=self.visit,
+            pragma_level = self.pragma_level,
+            seen_pragmas=[sp for sp in self.seen_pragmas],
             children=[child for child in self.children],
-            parent=self.parent
+            parent=self.parent,
+            legal_actions=[la for la in self.legal_actions]
         )
     
     def generate_leaf_node(self):
         """
         Create a child node for self (initialize parent=self), the created node will be used by apply_action()
         """
-        self.log.info(f'[generate leaf node] point: {self.point}')
+        self.log.info(f'[generate leaf node] point: {self.point}, seen pragmas: {self.seen_pragmas[:]} + {[self.pragma_level]}')
         return MCTSNode(
             log=self.log,
             ds=self.ds,
             explorer = self.explorer,
             max_explored_nodes=self.max_explored_nodes,
             point={k: v for k, v in self.point.items()},
+            seen_pragmas = self.seen_pragmas[:] + [self.pragma_level] if self.pragma_level else self.seen_pragmas[:],
+            legal_actions=self.legal_actions,
             parent=self
         )
 
@@ -1069,11 +1079,7 @@ class MCTSNode():
         cur_node = self
         path = [cur_node]
         while cur_node.is_selectable() :
-            # self.log.info(f'[select] current: {cur_node.point}')
-            # for c in cur_node.children:
-            #     self.log.info(f'[select] child {c.point}, ucb score {c.ucb_score()}')
             cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
-            # self.log.info(f'[select] best child: {cur_node.point}, #legal actions: {len(cur_node.legal_actions)}, child.children: {[child.point for child in cur_node.children]}')
             path.append(cur_node)
         self.log.info(f'[select] done, path: {[p.point for p in path]}')
         return path
@@ -1083,18 +1089,19 @@ class MCTSNode():
         Expand the current node and return the newly expanded child node
 		if the current node has no unexpanded move, it returns itself
         """
-        self.log.info('[expand] starts...')
+        self.log.info(f'[expand] starts, legal actions: {self.legal_actions}')
         for action in self.legal_actions:
             # Check if this action has been expanded
             # -- check if it exists in children
             is_expanded = False
             if self.children:
+                if self.children[0].pragma_level != None and action[0] != self.children[0].pragma_level:
+                        continue
                 for child in self.children:
-                    if action[0] in child.point.keys():
-                        if child.point[action[0]] == action[1]:
-                            is_expanded = True
-                            break
-            # self.log.info(f'[expand] check: {action} is expanded: {is_expanded}, expanded actions={[child.point for child in self.children]}')
+                    if child.point[action[0]] == action[1]:
+                        is_expanded = True
+                        break
+            self.log.info(f'[expand] check: {action} is expanded: {is_expanded}, expanded actions={[child.point for child in self.children]}')
             if not is_expanded:
                 new_child = self.generate_leaf_node()
                 new_child.apply_action(action)
@@ -1112,12 +1119,16 @@ class MCTSNode():
             Idea 1: if there's no further actions possible
             Idea 2: if applying more pragmas does not improve the design
         """
-        # self.log.info('[simulate] starts...')
         rollout = self.copy_self_node()
+        self.log.info(f'[simulate] starts... point: {rollout.point}')
         legal_actions = self.legal_actions
         while legal_actions:
-            rollout.apply_action(legal_actions[0])
-            legal_actions = rollout.get_legal_actions()
+            self.log.info(f'[simulate] point: {rollout.point}, #legal-actions: {len(legal_actions)}, actions: {legal_actions}')
+            action = legal_actions[-1]
+            rollout.apply_action(action)
+            self.log.info(f'[simulate] apply: {legal_actions[-1]} -> point: {rollout.point}')
+            legal_actions = [la for la in legal_actions if la[0] != action[0]]
+
         reward = rollout.compute_reward()
         self.log.info(f'[simulate] done, simulation reward: {reward}')
         return reward
@@ -1147,7 +1158,7 @@ class MCTSNode():
             if reward > max_reward:
                 max_reward = reward
                 max_node = cur_node
-        self.log.info(f'[get best design] {max_node.point}')
+        self.log.info(f'[get best design] reward: {max_reward}, point: {max_node.point}')
         return max_node  
        
     def run_mcts(self):
@@ -1172,7 +1183,7 @@ class MCTSExplorer(Explorer):
     
     def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, 
                  run_dse: bool = True, prune_invalid = FLAGS.prune_class, point: DesignPoint = None, 
-                 pragma_dim = None, max_explored_nodes = 15, policy_network_path = None, value_network_path = None):
+                 pragma_dim = None, max_explored_nodes = 50, policy_network_path = None, value_network_path = None):
         """
         Parameters:
         max_explored_nodes: maximum number of action (node) to search during MCTS
@@ -1191,7 +1202,7 @@ class MCTSExplorer(Explorer):
             self.policy_network.load_state_dict(torch.load(self.policy_network_path))
             self.value_network.load_state_dict(torch.load(self.value_network_path))
 
-        self.mcts_root = MCTSNode(log=self.log, ds=self.ds, explorer = self, max_explored_nodes=self.max_explored_nodes)
+        self.mcts_root = MCTSNode(log=self.log, ds=self.ds, explorer = self, max_explored_nodes=self.max_explored_nodes, point=get_default_point(self.ds))
         self.log.info(f'Done MCTSExplorer init, #MCTS-Simulation={self.max_explored_nodes}')
 
         if self.run_dse:
