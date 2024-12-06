@@ -839,7 +839,6 @@ class Explorer():
         """
         raise NotImplementedError()
     
-    
 class ExhaustiveExplorer(Explorer):
     def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, run_dse: bool = True, prune_invalid = FLAGS.prune_class, point: DesignPoint = None, pragma_dim = None):
         """Constructor.
@@ -1143,15 +1142,12 @@ class MCTSNode():
         Return the node in the path [root->leaf] that has the higest reward that child is selected by the ucb score
         """
         cur_node = self
-        max_reward, max_node = cur_node.compute_reward(), cur_node
         while cur_node.children:
             cur_node = max(cur_node.children, key=lambda child: child.ucb_score())
-            reward = cur_node.compute_reward()
-            if reward > max_reward:
-                max_reward = reward
-                max_node = cur_node
+        
+        reward = cur_node.compute_reward()
         self.log.info(f'[get best design] reward: {max_reward}, point: {max_node.point}')
-        return max_reward, max_node.point  
+        return reward, cur_node.point  
        
     def run_mcts(self):
         """
@@ -1185,8 +1181,6 @@ class MCTSNode():
         plt.close()
         return best_reward, best_design_point
     
-
-
 class MCTSExplorer(Explorer):
     
     def __init__(self, path_kernel: str, kernel_name: str, path_graph: str, first_dse: bool = False, 
