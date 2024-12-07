@@ -1,3 +1,5 @@
 temp/
 HARP/src/logs/
 HARP/src/__pycache__/
+HARP/src/results
+HARP/save
